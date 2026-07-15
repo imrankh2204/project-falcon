@@ -1,14 +1,7 @@
-# Zerodha
-KITE_API_KEY=
-KITE_API_SECRET=
-KITE_ACCESS_TOKEN=
+"""
+Configuration package.
+"""
 
-# Telegram
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_CHAT_ID=
+from app.config.manager import get_config
 
-# Database
-DATABASE_URL=sqlite:///data/falcon.db
-
-# Environment
-APP_ENV=paper
+__all__ = ["get_config"]
