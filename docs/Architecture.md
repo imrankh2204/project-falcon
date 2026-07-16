@@ -319,26 +319,25 @@ self.database_directory = Path("data") / "database"
 13. Small Architectural Improvement
 
 One enhancement I'd like to make during FAL-012B is to stop hardcoding the database directory:
-
 Path("data") / "database"
 
 Earlier, we created:
-
 Project-Falcon\
 app\
     core\
         paths.py
 
 This is exactly the right place to centralize filesystem locations. During FAL-012B, we'll refactor DatabaseManager to consume those path definitions instead of constructing them locally. That keeps path management consistent across the entire project.
+=======================================================================
+14. Small Architectural Improvement
 
+Now is also a good time to start using the app/core/paths.py module that you created earlier. Rather than constructing paths like Path("data") / "database" directly inside DatabaseManager, we'll centralize them in paths.py and have the database layer consume those constants.
+
+That keeps filesystem knowledge in one place and makes future changes much easier.
+=======================================================================
 
 
 =======================================================================
-
-=======================================================================
-
-=======================================================================
-
 =======================================================================
 
 =======================================================================

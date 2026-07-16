@@ -35,3 +35,10 @@ CREATE TABLE IF NOT EXISTS paper_trades (
     pnl REAL,
     status TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS application_state (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key TEXT NOT NULL UNIQUE,
+    value TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
