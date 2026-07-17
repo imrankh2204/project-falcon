@@ -335,12 +335,101 @@ Now is also a good time to start using the app/core/paths.py module that you cre
 
 That keeps filesystem knowledge in one place and makes future changes much easier.
 =======================================================================
+15. One architectural note
+I also noticed that DatabaseManager is still constructing its own paths:
+Path("data") / "database"
+
+This is perfectly acceptable for FAL-012A. I would not change it before committing.
+However, once we start FAL-012B, I'd like to refactor it to use the app/core/paths.py module you already created. That keeps filesystem paths centralized and avoids duplicating them across services.
+=======================================================================
+16. Architectural Refinement
+I also want to begin using the app/core/paths.py module during this phase.
+Instead of:
+Path("database") / "schema.sql"
+
+we'll eventually reference a centralized constant from paths.py. That keeps all filesystem knowledge in one place and makes the codebase easier to maintain if the project structure ever changes.
+=======================================================================
+17. Architectural Decision Log
+I'd also like to start recording key decisions in docs/Architecture.md. We don't need a long document—just concise notes. For this phase, I'd add an entry like:
+## ADR-001: Database Schema Initialization
+Decision:
+Falcon initializes its SQLite schema automatically during startup by executing `database/schema.sql`.
+
+Rationale:
+- Eliminates manual setup.
+- Ensures consistent environments.
+- Simplifies onboarding and deployment.
+- Supports automated testing.
+
+Over time, this will become a valuable record of why we made certain choices, not just what we implemented.
+=======================================================================
+18. Architectural Improvement
+
+After FAL-012B, I'd like to refactor DatabaseManager so it uses app/core/paths.py for locating resources instead of constructing paths internally. We intentionally deferred that change to keep this milestone focused, but centralizing filesystem paths will make the code cleaner and easier to maintain.
+=======================================================================
+19. One Architectural Adjustment
+I'd like to introduce one small but important refinement to our roadmap.
+Originally, FAL-012D was going to be a generic "Persistence API." I think we should make it more explicit and adopt the Repository pattern from the start.
+
+That means creating focused classes such as:
+app/
+└── persistence/
+    ├── __init__.py
+    ├── application_state_repository.py
+    ├── application_event_repository.py
+    ├── market_session_repository.py
+    └── paper_trade_repository.py
+
+Each repository would have a single responsibility:
+
+ApplicationStateRepository manages application metadata.
+ApplicationEventRepository records significant lifecycle events.
+MarketSessionRepository manages paper-trading sessions.
+PaperTradeRepository stores and retrieves simulated trades.
+
+This keeps business operations close to the domain they belong to while leaving DatabaseManager responsible only for low-level database access.
+=======================================================================
+20. 
+=======================================================================
 
 
 =======================================================================
+
+
+=======================================================================
+
+
+=======================================================================
+
+
+=======================================================================
+
+
+=======================================================================
+
+
+=======================================================================
+
+
 =======================================================================
 
 =======================================================================
+
+=======================================================================
+
+
+=======================================================================
+
+
+=======================================================================
+
+
+=======================================================================
+
+=======================================================================
+
+=======================================================================
+
 
 
 

@@ -3,6 +3,13 @@
 -- Version: 1.0
 -- ==================================================
 
+CREATE TABLE IF NOT EXISTS application_state (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key TEXT NOT NULL UNIQUE,
+    value TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS application_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     event_time TEXT NOT NULL,
@@ -36,9 +43,3 @@ CREATE TABLE IF NOT EXISTS paper_trades (
     status TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS application_state (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    key TEXT NOT NULL UNIQUE,
-    value TEXT,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);

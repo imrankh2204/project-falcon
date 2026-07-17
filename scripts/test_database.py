@@ -14,11 +14,19 @@ def main() -> None:
     db = DatabaseManager()
 
     print("Opening database...")
-
     db.connect()
 
-    print("Running health check...")
+    print("Initializing schema...")
+    db.initialize_schema()
 
+    print("Schema initialized.")
+
+    print("Verifying schema...")
+    assert db.verify_schema()
+
+    print("Schema verification PASSED")
+
+    print("Running health check...")
     assert db.health_check()
 
     print("Health check PASSED")
@@ -26,8 +34,8 @@ def main() -> None:
     db.close()
 
     print("Connection closed")
-
     print()
+
     print("STATUS : PASS")
 
 
