@@ -23,6 +23,9 @@ logs/
 *.db
 *.sqlite3
 
+# Project runtime database
+data/database/*.db
+
 # Build
 build/
 dist/
