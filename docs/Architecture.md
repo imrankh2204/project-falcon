@@ -411,7 +411,27 @@ Easier comparisons throughout the codebase.
 
 I believe this is a worthwhile investment because timeframes will be referenced in almost every subsystem Falcon has.
 =======================================================================
-21. 
+21. Architectural Decision for FAL-040-R2
+Before we implement ZerodhaMarketDataProvider, I'd like to make one important refinement.
+Dependency Injection Instead of Direct Construction
+Instead of allowing the provider to create its own broker instance, we'll inject an existing ZerodhaBroker.
+
+Avoid
+provider = ZerodhaMarketDataProvider()
+Prefer
+broker = ZerodhaBroker(...)
+provider = ZerodhaMarketDataProvider(broker)
+Why?
+
+This gives us several advantages:
+
+A single authenticated broker session is shared.
+No duplicated SDK initialization.
+Easier unit testing using mock brokers.
+Clear separation of responsibilities.
+Consistent with dependency inversion principles.
+
+The provider should retrieve data—not own the broker lifecycle.
 
 =======================================================================
 
