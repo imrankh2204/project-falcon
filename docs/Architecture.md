@@ -389,9 +389,29 @@ PaperTradeRepository stores and retrieves simulated trades.
 
 This keeps business operations close to the domain they belong to while leaving DatabaseManager responsible only for low-level database access.
 =======================================================================
-20. 
-=======================================================================
+20. A Small Architectural Refinement
+I'd like to introduce one improvement based on everything we've learned during the infrastructure milestones.
 
+For the market domain, I propose we use Python Enum for values such as timeframes and option types, rather than plain strings.
+For example:
+from enum import Enum
+
+class TimeFrame(Enum):
+    ONE_MINUTE = "1m"
+    THREE_MINUTES = "3m"
+    FIVE_MINUTES = "5m"
+    ...
+
+This gives us:
+
+Compile-time clarity.
+IDE auto-completion.
+Prevention of invalid values like "5MIN" or "5 minute".
+Easier comparisons throughout the codebase.
+
+I believe this is a worthwhile investment because timeframes will be referenced in almost every subsystem Falcon has.
+=======================================================================
+21. 
 
 =======================================================================
 
