@@ -4,7 +4,6 @@ Database validation script.
 
 from app.core.database import DatabaseManager
 
-
 def main() -> None:
 
     print("=" * 50)
