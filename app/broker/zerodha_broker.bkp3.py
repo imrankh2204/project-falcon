@@ -8,12 +8,10 @@ in subsequent releases.
 
 from __future__ import annotations
 
-from kiteconnect import KiteConnect
-
 from app.broker.broker_client import BrokerClient
-from app.broker.exceptions import BrokerAuthenticationError
-from app.config.manager import get_config
 from app.core.logger import get_logger
+from kiteconnect import KiteConnect
+from app.config.manager import get_config
 
 
 class ZerodhaBroker(BrokerClient):
@@ -34,48 +32,14 @@ class ZerodhaBroker(BrokerClient):
         self.kite = KiteConnect(api_key=self._api_key)
 
     def connect(self) -> None:
-        """
-        Initialize the Zerodha broker session.
-
-        This validates the required configuration and prepares the
-        KiteConnect client. Live session verification is intentionally
-        deferred until API access is available.
-        """
-
-        self.logger.info("Connecting Zerodha broker...")
-
-        if not self._api_key:
-            raise BrokerAuthenticationError(
-                "KITE_API_KEY is not configured."
-            )
-
-        if not self._access_token:
-            raise BrokerAuthenticationError(
-                "KITE_ACCESS_TOKEN is not configured."
-            )
-
-        self.kite.set_access_token(self._access_token)
-
-        self._connected = True
-
-        self.logger.info("Zerodha broker initialized successfully.")
+        raise NotImplementedError(
+            "Zerodha connection not implemented yet."
+        )
 
     def disconnect(self) -> None:
-        """
-        Reset the local broker session.
-        """
-
-        self.logger.info("Disconnecting Zerodha broker...")
-
         self._connected = False
 
-        self.logger.info("Zerodha broker disconnected.")
-
     def is_connected(self) -> bool:
-        """
-        Return the current broker connection state.
-        """
-
         return self._connected
 
     def download_instruments(self) -> None:
