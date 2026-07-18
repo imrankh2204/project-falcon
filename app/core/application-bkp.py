@@ -25,26 +25,16 @@ class Application:
         Start the application.
         """
 
-        from app.core.health import HealthMonitor
-
         self.logger.info("Starting Project Falcon...")
 
         self.database.connect()
-
         self.database.initialize_schema()
-
         self.database.verify_schema()
 
-        monitor = HealthMonitor(self.database)
+        if not self.database.health_check():
+            raise RuntimeError("Database health check failed.")
 
-        if not monitor.is_ready():
-            raise RuntimeError(
-                "Application failed health validation."
-            )
-
-        self.logger.info(
-            "Project Falcon started successfully."
-        )
+        self.logger.info("Project Falcon started successfully.")
 
     def shutdown(self) -> None:
         """
