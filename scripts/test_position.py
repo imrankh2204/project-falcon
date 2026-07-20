@@ -19,11 +19,7 @@ from app.trading.position import (
 )
 
 
-def create_position() -> Position:
-    """
-    Create a valid Position instance for testing.
-    """
-
+def create_position(signal: Signal, entry_price: float) -> Position:
     instrument = Instrument(
         exchange="NSE",
         symbol="NIFTY25JUL25000CE",
@@ -36,77 +32,136 @@ def create_position() -> Position:
     return Position(
         position_id="POS-001",
         instrument=instrument,
-        signal=Signal.BUY,
-        quantity=75,
-        entry_price=250.50,
+        signal=signal,
+        quantity=10,
+        entry_price=entry_price,
         entry_time=datetime.now(),
     )
 
 
 def main() -> None:
-    """
-    Execute Position smoke tests.
-    """
 
     print("=" * 60)
     print("Position Smoke Test")
     print("=" * 60)
 
-    position = create_position()
+    #
+    # Initial state
+    #
+
+    position = create_position(
+        Signal.BUY,
+        100.0,
+    )
 
     print("\n[1] Verify initial state...")
 
-    assert position.is_open is True
-    assert position.is_closed is False
+    assert position.is_open
+    assert not position.is_closed
 
-    assert position.exit_price is None
-    assert position.exit_time is None
+    assert position.realized_pnl == 0.0
 
     print("✓ Initial state verified")
 
-    print("\n[2] Close position...")
+    #
+    # Long profit
+    #
+
+    print("\n[2] Long profit...")
 
     exit_time = position.entry_time + timedelta(minutes=5)
 
     position.close(
-        exit_price=255.75,
+        exit_price=110.0,
         exit_time=exit_time,
     )
 
-    assert position.is_open is False
-    assert position.is_closed is True
+    assert position.realized_pnl == 100.0
 
-    assert position.exit_price == 255.75
-    assert position.exit_time == exit_time
+    print("✓ Long profit verified")
 
-    print("✓ Position closed successfully")
-    
-    print("\n[3] Attempt to close position again...")
+    #
+    # Double close
+    #
 
-    original_exit_price = position.exit_price
-    original_exit_time = position.exit_time
+    print("\n[3] Double close...")
+
+    pnl = position.realized_pnl
 
     try:
         position.close(
-            exit_price=260.00,
+            exit_price=120.0,
             exit_time=exit_time + timedelta(minutes=1),
         )
-        raise AssertionError(
-            "Expected PositionLifecycleError was not raised."
-        )
+
+        raise AssertionError()
 
     except PositionLifecycleError:
-        print("✓ Double-close correctly rejected")
+        pass
 
-    print("\n[4] Verify state remained unchanged...")
+    assert position.realized_pnl == pnl
 
-    assert position.is_closed is True
-    assert position.is_open is False
+    print("✓ Double-close rejected")
 
-    assert position.exit_price == original_exit_price
-    assert position.exit_time == original_exit_time
+    #
+    # Long loss
+    #
 
-    print("✓ Position state remained consistent")
+    print("\n[4] Long loss...")
+
+    position = create_position(
+        Signal.BUY,
+        110.0,
+    )
+
+    position.close(
+        exit_price=100.0,
+        exit_time=position.entry_time + timedelta(minutes=1),
+    )
+
+    assert position.realized_pnl == -100.0
+
+    print("✓ Long loss verified")
+
+    #
+    # Short profit
+    #
+
+    print("\n[5] Short profit...")
+
+    position = create_position(
+        Signal.SELL,
+        110.0,
+    )
+
+    position.close(
+        exit_price=100.0,
+        exit_time=position.entry_time + timedelta(minutes=1),
+    )
+
+    assert position.realized_pnl == 100.0
+
+    print("✓ Short profit verified")
+
+    #
+    # Short loss
+    #
+
+    print("\n[6] Short loss...")
+
+    position = create_position(
+        Signal.SELL,
+        100.0,
+    )
+
+    position.close(
+        exit_price=110.0,
+        exit_time=position.entry_time + timedelta(minutes=1),
+    )
+
+    assert position.realized_pnl == -100.0
+
+    print("✓ Short loss verified")
 
     print("\n" + "=" * 60)
     print("All Position smoke tests passed.")

@@ -24,19 +24,19 @@ class Position:
     Represents an active or completed trading position.
 
     A Position is the core trading domain entity responsible for
-    maintaining its own lifecycle state and realized accounting.
+    maintaining its own lifecycle state.
 
     Responsibilities:
         - Hold immutable trade information.
         - Track lifecycle state.
         - Validate lifecycle transitions.
         - Record exit metadata.
-        - Calculate realized P&L.
 
     A Position intentionally does NOT perform:
 
-        - Portfolio accounting
+        - P&L calculations
         - Brokerage calculations
+        - Portfolio management
         - Execution logic
     """
 
@@ -71,7 +71,7 @@ class Position:
     #
 
     exit_price: float | None = field(default=None)
-    exit_time: datetime |None = field(default=None)
+    exit_time: datetime | None = field(default=None)
 
     #
     # Lifecycle
@@ -80,25 +80,6 @@ class Position:
     status: PositionStatus = field(
         default=PositionStatus.OPEN
     )
-
-    #
-    # Accounting
-    #
-
-    _realized_pnl: float = field(
-        default=0.0,
-        init=False,
-        repr=False,
-    )
-
-    @property
-    def realized_pnl(self) -> float:
-        """
-        Return the realized profit/loss.
-
-        Returns zero while the position remains open.
-        """
-        return self._realized_pnl
 
     @property
     def is_open(self) -> bool:
@@ -121,57 +102,61 @@ class Position:
     ) -> None:
         """
         Close the trading position.
+
+        Parameters
+        ----------
+        exit_price:
+            Executed exit price.
+
+        exit_time:
+            Timestamp of exit execution.
+
+        Raises
+        ------
+        PositionLifecycleError
+            If the lifecycle transition is invalid.
         """
+
+        #
+        # Validate lifecycle
+        #
 
         if self.is_closed:
             raise PositionLifecycleError(
                 "Position is already closed."
             )
 
+        #
+        # Validate exit price
+        #
+
         if exit_price <= 0:
             raise PositionLifecycleError(
                 "Exit price must be greater than zero."
             )
+        
+                #
+        # Validate exit timestamp
+        #
 
         if exit_time <= self.entry_time:
             raise PositionLifecycleError(
                 "Exit time cannot be earlier than entry time."
             )
 
+        #
+        # Record exit information
+        #
+
         self.exit_price = exit_price
         self.exit_time = exit_time
 
-        self._calculate_realized_pnl()
+        #
+        # Transition lifecycle
+        #
 
         self.status = PositionStatus.CLOSED
-
-    def _calculate_realized_pnl(self) -> None:
-        """
-        Calculate realized profit/loss exactly once.
-
-        Long (BUY):
-            (exit - entry) × quantity
-
-        Short (SELL):
-            (entry - exit) × quantity
-        """
-
-        if self.exit_price is None:
-            raise PositionLifecycleError(
-                "Exit price is unavailable."
-            )
-
-        if self.signal == Signal.BUY:
-            self._realized_pnl = (
-                self.exit_price - self.entry_price
-            ) * self.quantity
-
-        elif self.signal == Signal.SELL:
-            self._realized_pnl = (
-                self.entry_price - self.exit_price
-            ) * self.quantity
-
-        else:
-            raise PositionLifecycleError(
-                "Unsupported trading signal."
-            )
+        
+        #
+        # End of Position
+        #
