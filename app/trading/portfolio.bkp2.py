@@ -1,17 +1,16 @@
 """
 Portfolio aggregate root for Project Falcon.
 
-Owns the trading positions for a trading account.
+Owns the active trading positions for a trading account.
 
 Responsibilities:
-    - Maintain trading positions.
+    - Maintain active positions.
     - Enforce portfolio-level constraints.
     - Provide read-only access to portfolio state.
-    - Aggregate portfolio accounting.
 
 The Portfolio intentionally does NOT implement:
 
-    - Trade-level P&L calculations
+    - P&L calculations
     - Cash management
     - Position history
     - Exit lifecycle
@@ -37,8 +36,8 @@ class Portfolio:
     """
     Aggregate root representing the current trading account state.
 
-    The Portfolio owns all trading positions and exposes
-    portfolio-level aggregate information.
+    The Portfolio owns all active positions and enforces
+    portfolio-level invariants.
     """
 
     def __init__(self) -> None:
@@ -51,6 +50,11 @@ class Portfolio:
     def positions(self) -> Mapping[str, Position]:
         """
         Return a read-only mapping of positions.
+
+        Returns
+        -------
+        Mapping[str, Position]
+            Immutable view of the portfolio positions.
         """
         return MappingProxyType(self._positions)
 
@@ -59,81 +63,23 @@ class Portfolio:
         """
         Return True when at least one position is open.
         """
-        return any(
-            position.is_open
-            for position in self._positions.values()
-        )
+        return any(position.is_open for position in self._positions.values())
 
     @property
     def open_position(self) -> Position | None:
         """
         Return the currently open position.
+
+        Returns
+        -------
+        Position | None
+            The active position if present, otherwise None.
         """
         for position in self._positions.values():
             if position.is_open:
                 return position
 
         return None
-
-    @property
-    def total_realized_pnl(self) -> float:
-        """
-        Return total realized portfolio P&L.
-
-        Only closed positions contribute.
-        """
-        return sum(
-            position.realized_pnl
-            for position in self._positions.values()
-            if position.is_closed
-        )
-
-    @property
-    def closed_position_count(self) -> int:
-        """
-        Return the number of closed positions.
-        """
-        return sum(
-            1
-            for position in self._positions.values()
-            if position.is_closed
-        )
-
-    @property
-    def winning_position_count(self) -> int:
-        """
-        Return the number of profitable closed positions.
-        """
-        return sum(
-            1
-            for position in self._positions.values()
-            if position.is_closed
-            and position.realized_pnl > 0
-        )
-
-    @property
-    def losing_position_count(self) -> int:
-        """
-        Return the number of losing closed positions.
-        """
-        return sum(
-            1
-            for position in self._positions.values()
-            if position.is_closed
-            and position.realized_pnl < 0
-        )
-
-    @property
-    def breakeven_position_count(self) -> int:
-        """
-        Return the number of breakeven closed positions.
-        """
-        return sum(
-            1
-            for position in self._positions.values()
-            if position.is_closed
-            and position.realized_pnl == 0
-        )
 
     def add_position(self, position: Position) -> None:
         """
@@ -154,9 +100,7 @@ class Portfolio:
         """
 
         if not isinstance(position, Position):
-            raise PortfolioError(
-                "Expected Position instance."
-            )
+            raise PortfolioError("Expected Position instance.")
 
         if position.position_id in self._positions:
             raise PortfolioError(

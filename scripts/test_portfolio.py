@@ -8,7 +8,7 @@ Run:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.market.instrument import Instrument
 from app.strategies.signal import Signal
@@ -16,7 +16,11 @@ from app.trading.portfolio import Portfolio, PortfolioError
 from app.trading.position import Position
 
 
-def create_position(position_id: str) -> Position:
+def create_position(
+    position_id: str,
+    signal: Signal,
+    entry_price: float,
+) -> Position:
     """
     Create a valid Position instance for testing.
     """
@@ -32,10 +36,24 @@ def create_position(position_id: str) -> Position:
     return Position(
         position_id=position_id,
         instrument=instrument,
-        signal=Signal.BUY,
-        quantity=75,
-        entry_price=250.50,
+        signal=signal,
+        quantity=10,
+        entry_price=entry_price,
         entry_time=datetime.now(),
+    )
+
+
+def close_position(
+    position: Position,
+    exit_price: float,
+) -> None:
+    """
+    Close a position using a valid exit timestamp.
+    """
+
+    position.close(
+        exit_price=exit_price,
+        exit_time=position.entry_time + timedelta(minutes=5),
     )
 
 
@@ -48,6 +66,10 @@ def main() -> None:
     print("Portfolio Smoke Test")
     print("=" * 60)
 
+    #
+    # Initial state
+    #
+
     portfolio = Portfolio()
 
     print("\n[1] Verify initial portfolio state...")
@@ -56,40 +78,137 @@ def main() -> None:
     assert portfolio.has_open_position is False
     assert portfolio.open_position is None
 
-    print("✓ Portfolio initialized correctly")
+    assert portfolio.total_realized_pnl == 0.0
+    assert portfolio.closed_position_count == 0
+    assert portfolio.winning_position_count == 0
+    assert portfolio.losing_position_count == 0
+    assert portfolio.breakeven_position_count == 0
 
-    print("\n[2] Add first position...")
+    print("✓ Initial portfolio state verified")
 
-    position_one = create_position("POS-001")
+    #
+    # Winning position
+    #
 
-    portfolio.add_position(position_one)
+    print("\n[2] Verify winning position accounting...")
 
-    assert len(portfolio.positions) == 1
-    assert portfolio.has_open_position is True
-    assert portfolio.open_position is position_one
+    winner = create_position(
+        "POS-001",
+        Signal.BUY,
+        100.0,
+    )
 
-    print("✓ First position accepted")
+    portfolio.add_position(winner)
 
-    print("\n[3] Attempt second open position...")
+    close_position(
+        winner,
+        110.0,
+    )
 
-    position_two = create_position("POS-002")
+    assert portfolio.total_realized_pnl == 100.0
+    assert portfolio.closed_position_count == 1
+    assert portfolio.winning_position_count == 1
+    assert portfolio.losing_position_count == 0
+    assert portfolio.breakeven_position_count == 0
+
+    print("✓ Winning trade accounting verified")
+
+    #
+    # Losing position
+    #
+
+    print("\n[3] Verify losing position accounting...")
+
+    loser = create_position(
+        "POS-002",
+        Signal.BUY,
+        120.0,
+    )
+
+    portfolio.add_position(loser)
+
+    close_position(
+        loser,
+        110.0,
+    )
+
+    assert portfolio.total_realized_pnl == 0.0
+    assert portfolio.closed_position_count == 2
+    assert portfolio.winning_position_count == 1
+    assert portfolio.losing_position_count == 1
+    assert portfolio.breakeven_position_count == 0
+
+    print("✓ Losing trade accounting verified")
+
+    #
+    # Breakeven position
+    #
+
+    print("\n[4] Verify breakeven accounting...")
+
+    breakeven = create_position(
+        "POS-003",
+        Signal.BUY,
+        150.0,
+    )
+
+    portfolio.add_position(breakeven)
+
+    close_position(
+        breakeven,
+        150.0,
+    )
+
+    assert portfolio.total_realized_pnl == 0.0
+    assert portfolio.closed_position_count == 3
+    assert portfolio.winning_position_count == 1
+    assert portfolio.losing_position_count == 1
+    assert portfolio.breakeven_position_count == 1
+
+    print("✓ Breakeven accounting verified")
+
+    #
+    # Single-open-position rule
+    #
+
+    print("\n[5] Verify open-position constraint...")
+
+    open_position = create_position(
+        "POS-004",
+        Signal.BUY,
+        100.0,
+    )
+
+    portfolio.add_position(open_position)
+
+    duplicate = create_position(
+        "POS-005",
+        Signal.BUY,
+        100.0,
+    )
 
     try:
-        portfolio.add_position(position_two)
+        portfolio.add_position(duplicate)
         raise AssertionError(
             "Expected PortfolioError was not raised."
         )
 
     except PortfolioError:
-        print("✓ Second open position correctly rejected")
+        print("✓ Second open position rejected")
 
-    print("\n[4] Verify portfolio state unchanged...")
+    #
+    # Open position excluded from accounting
+    #
 
-    assert len(portfolio.positions) == 1
-    assert portfolio.open_position is position_one
-    assert portfolio.has_open_position is True
+    print("\n[6] Verify open position exclusion...")
 
-    print("✓ Portfolio state remained consistent")
+    assert portfolio.total_realized_pnl == 0.0
+    assert portfolio.closed_position_count == 3
+    assert portfolio.winning_position_count == 1
+    assert portfolio.losing_position_count == 1
+    assert portfolio.breakeven_position_count == 1
+
+    print("✓ Open position excluded from accounting")
 
     print("\n" + "=" * 60)
     print("All Portfolio smoke tests passed.")
