@@ -210,10 +210,42 @@ def main() -> None:
 
     print("✓ Open position excluded from accounting")
 
+    #
+    # Average winner analytics
+    #
+
+    print("\n[7] Verify average winner analytics...")
+
+    assert portfolio.average_winning_pnl == 100.0
+
+    print("✓ Average winner analytics verified")
+
+    #
+    # Average loser analytics
+    #
+
+    print("\n[8] Verify average loser analytics...")
+
+    assert portfolio.average_losing_pnl == -100.0
+
+    print("✓ Average loser analytics verified")
+
+    #
+    # Empty analytics
+    #
+
+    print("\n[9] Verify empty analytics...")
+
+    empty_portfolio = Portfolio()
+
+    assert empty_portfolio.average_winning_pnl == 0.0
+    assert empty_portfolio.average_losing_pnl == 0.0
+
+    print("✓ Empty analytics verified")
+
     print("\n" + "=" * 60)
     print("All Portfolio smoke tests passed.")
     print("=" * 60)
-
 
 if __name__ == "__main__":
     main()

@@ -8,7 +8,6 @@ Responsibilities:
     - Enforce portfolio-level constraints.
     - Provide read-only access to portfolio state.
     - Aggregate portfolio accounting.
-    - Expose portfolio analytics.
 
 The Portfolio intentionally does NOT implement:
 
@@ -80,6 +79,8 @@ class Portfolio:
     def total_realized_pnl(self) -> float:
         """
         Return total realized portfolio P&L.
+
+        Only closed positions contribute.
         """
         return sum(
             position.realized_pnl
@@ -134,35 +135,22 @@ class Portfolio:
             and position.realized_pnl == 0
         )
 
-    @property
-    def win_rate(self) -> float:
-        """
-        Return the portfolio win rate as a percentage.
-
-        Returns
-        -------
-        float
-            Percentage of winning trades among all
-            closed positions.
-
-        Notes
-        -----
-        - Open positions are excluded.
-        - Breakeven trades count as closed trades
-          but not as winners.
-        - Returns 0.0 when no closed positions exist.
-        """
-        if self.closed_position_count == 0:
-            return 0.0
-
-        return (
-            self.winning_position_count
-            / self.closed_position_count
-        ) * 100.0
-
     def add_position(self, position: Position) -> None:
         """
         Register a new position in the portfolio.
+
+        Parameters
+        ----------
+        position:
+            Position to register.
+
+        Raises
+        ------
+        PortfolioError
+            If:
+                - object is not a Position
+                - duplicate position id exists
+                - another open position already exists
         """
 
         if not isinstance(position, Position):
@@ -181,61 +169,3 @@ class Portfolio:
             )
 
         self._positions[position.position_id] = position
-
-    @property
-    def average_winning_pnl(self) -> float:
-        """
-        Return the average realized profit of all winning positions.
-
-        Returns
-        -------
-        float
-            Average realized P&L of winning positions.
-            Returns 0.0 when no winning positions exist.
-        """
-
-        winning_positions = [
-            position
-            for position in self._positions.values()
-            if position.is_closed
-            and position.realized_pnl > 0.0
-        ]
-
-        if not winning_positions:
-            return 0.0
-
-        total_profit = sum(
-            position.realized_pnl
-            for position in winning_positions
-        )
-
-        return total_profit / len(winning_positions)
-
-    @property
-    def average_losing_pnl(self) -> float:
-        """
-        Return the average realized loss of all losing positions.
-
-        Returns
-        -------
-        float
-            Average realized P&L of losing positions.
-            Returns 0.0 when no losing positions exist.
-        """
-
-        losing_positions = [
-            position
-            for position in self._positions.values()
-            if position.is_closed
-            and position.realized_pnl < 0.0
-        ]
-
-        if not losing_positions:
-            return 0.0
-
-        total_loss = sum(
-            position.realized_pnl
-            for position in losing_positions
-        )
-
-        return total_loss / len(losing_positions)
