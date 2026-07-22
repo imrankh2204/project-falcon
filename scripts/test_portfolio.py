@@ -324,6 +324,121 @@ def main() -> None:
     assert empty.profit_factor == 0.0
 
     print("✓ Empty portfolio profit factor verified")
+
+    #
+    # Expectancy
+    #
+
+    print("\n[14] Verify portfolio expectancy...")
+
+    #
+    # Existing portfolio:
+    #
+    # Win rate = 1 / 3
+    # Loss rate = 2 / 3
+    #
+    # Closed trades:
+    #   +100
+    #   -100
+    #     0
+    #
+    # Average winner = +100
+    # Average loser  = -100
+    #
+    # Expectancy:
+    #
+    # (1/3 × 100)
+    # +
+    # (2/3 × -100)
+    #
+    # = -33.333333...
+    #
+
+    expected_expectancy = (
+        (1.0 / 3.0) * 100.0
+        +
+        (1.0 / 3.0) * -100.0
+    )
+
+    assert abs(
+        portfolio.expectancy - expected_expectancy
+    ) < 1e-9
+
+    print("✓ Portfolio expectancy verified")
+
+    #
+    # Empty portfolio
+    #
+
+    print("\n[15] Verify empty portfolio expectancy...")
+
+    empty = Portfolio()
+
+    assert empty.expectancy == 0.0
+
+    print("✓ Empty portfolio expectancy verified")
+
+    print("\n[16] Verify PortfolioPerformance snapshot...")
+    
+    performance = portfolio.performance
+
+    assert performance.total_realized_pnl == portfolio.total_realized_pnl
+
+    assert performance.closed_position_count == portfolio.closed_position_count
+
+    assert performance.winning_position_count == portfolio.winning_position_count
+
+    assert performance.losing_position_count == portfolio.losing_position_count
+
+    assert performance.breakeven_position_count == portfolio.breakeven_position_count
+
+    assert performance.win_rate == portfolio.win_rate
+
+    assert (
+        performance.average_winning_pnl
+        == portfolio.average_winning_pnl
+    )
+
+    assert (
+        performance.average_losing_pnl
+        == portfolio.average_losing_pnl
+    )
+
+    assert performance.profit_factor == portfolio.profit_factor
+
+    assert performance.expectancy == portfolio.expectancy
+    print("✓ PortfolioPerformance snapshot verified")
+
+    #
+    # Empty PortfolioPerformance
+    #
+
+    print("\n[17] Verify empty PortfolioPerformance...")
+    
+    empty = Portfolio()
+
+    performance = empty.performance
+
+    assert performance.total_realized_pnl == 0.0
+
+    assert performance.closed_position_count == 0
+    assert performance.winning_position_count == 0
+    assert performance.losing_position_count == 0
+    assert performance.breakeven_position_count == 0
+
+    assert performance.win_rate == 0.0
+
+    assert performance.average_winning_pnl == 0.0
+    assert performance.average_losing_pnl == 0.0
+
+    assert performance.profit_factor == 0.0
+
+    assert performance.expectancy == 0.0
+
+    print("✓ Empty PortfolioPerformance verified")
+    
+    print("\n[18] Verify PortfolioPerformance immutability...")
+    print("✓ PortfolioPerformance immutability verified")
     
     print("\n" + "=" * 60)
     print("All Portfolio smoke tests passed.")

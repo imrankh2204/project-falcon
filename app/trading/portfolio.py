@@ -26,7 +26,7 @@ from collections.abc import Mapping
 from types import MappingProxyType
 
 from app.trading.position import Position
-
+from app.trading.performance import PortfolioPerformance
 
 class PortfolioError(Exception):
     """
@@ -283,3 +283,61 @@ class Portfolio:
             return float("inf")
 
         return gross_profit / gross_loss
+    
+    @property
+    def expectancy(self) -> float:
+        """
+        Return the portfolio expectancy.
+
+        Expectancy is defined as:
+
+            (Win Rate × Average Winning P&L)
+            +
+            (Loss Rate × Average Losing P&L)
+
+        Returns
+        -------
+        float
+            Expected realized P&L per completed trade.
+
+            Returns 0.0 when no closed trades exist.
+        """
+
+        if self.closed_position_count == 0:
+            return 0.0
+
+        win_rate = (
+            self.winning_position_count
+            / self.closed_position_count
+        )
+
+        loss_rate = (
+            self.losing_position_count
+            / self.closed_position_count
+        )
+
+        return (
+            (win_rate * self.average_winning_pnl)
+            + (loss_rate * self.average_losing_pnl)
+        )
+
+    @property
+    def performance(self) -> PortfolioPerformance:
+        
+        return PortfolioPerformance(
+        total_realized_pnl=self.total_realized_pnl,
+
+        closed_position_count=self.closed_position_count,
+        winning_position_count=self.winning_position_count,
+        losing_position_count=self.losing_position_count,
+        breakeven_position_count=self.breakeven_position_count,
+
+        win_rate=self.win_rate,
+
+        average_winning_pnl=self.average_winning_pnl,
+        average_losing_pnl=self.average_losing_pnl,
+
+        profit_factor=self.profit_factor,
+
+        expectancy=self.expectancy,
+        )
