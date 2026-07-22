@@ -239,3 +239,47 @@ class Portfolio:
         )
 
         return total_loss / len(losing_positions)
+    
+    @property
+    def profit_factor(self) -> float:
+        """
+        Return the portfolio profit factor.
+
+        Profit Factor is defined as:
+
+            Gross Winning P&L / Absolute Gross Losing P&L
+
+        Returns
+        -------
+        float
+            Portfolio profit factor.
+
+            Returns:
+                - float("inf") when no losing trades exist but at least
+                  one winning trade exists.
+                - 0.0 when no winning trades exist.
+        """
+
+        gross_profit = sum(
+            position.realized_pnl
+            for position in self._positions.values()
+            if position.is_closed
+            and position.realized_pnl > 0.0
+        )
+
+        gross_loss = abs(
+            sum(
+                position.realized_pnl
+                for position in self._positions.values()
+                if position.is_closed
+                and position.realized_pnl < 0.0
+            )
+        )
+
+        if gross_profit == 0.0:
+            return 0.0
+
+        if gross_loss == 0.0:
+            return float("inf")
+
+        return gross_profit / gross_loss

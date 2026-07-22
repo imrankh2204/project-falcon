@@ -243,6 +243,88 @@ def main() -> None:
 
     print("✓ Empty analytics verified")
 
+    #
+    # Profit factor
+    #
+
+    print("\n[10] Verify profit factor...")
+
+    #
+    # Existing portfolio:
+    #
+    # Winner   +100
+    # Loser    -100
+    # Breakeven   0
+    #
+    # Profit Factor = 100 / 100 = 1.0
+    #
+
+    assert portfolio.profit_factor == 1.0
+
+    print("✓ Profit factor verified")
+
+    #
+    # Winners only
+    #
+
+    print("\n[11] Verify infinite profit factor...")
+
+    winners_only = Portfolio()
+
+    winner = create_position(
+        "POS-100",
+        Signal.BUY,
+        100.0,
+    )
+
+    winners_only.add_position(winner)
+
+    close_position(
+        winner,
+        110.0,
+    )
+
+    assert winners_only.profit_factor == float("inf")
+
+    print("✓ Infinite profit factor verified")
+
+    #
+    # Losers only
+    #
+
+    print("\n[12] Verify zero profit factor...")
+
+    losers_only = Portfolio()
+
+    loser = create_position(
+        "POS-101",
+        Signal.BUY,
+        120.0,
+    )
+
+    losers_only.add_position(loser)
+
+    close_position(
+        loser,
+        110.0,
+    )
+
+    assert losers_only.profit_factor == 0.0
+
+    print("✓ Zero profit factor verified")
+
+    #
+    # Empty portfolio
+    #
+
+    print("\n[13] Verify empty portfolio profit factor...")
+
+    empty = Portfolio()
+
+    assert empty.profit_factor == 0.0
+
+    print("✓ Empty portfolio profit factor verified")
+    
     print("\n" + "=" * 60)
     print("All Portfolio smoke tests passed.")
     print("=" * 60)
