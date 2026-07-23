@@ -23,7 +23,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Final
 
-from app.backtest.provider import HistoricalDataProvider
+from app.backtest.historical_provider import HistoricalDataProvider
 from app.market.candle import Candle
 from app.market.timeframe import TimeFrame
 

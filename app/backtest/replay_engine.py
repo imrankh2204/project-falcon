@@ -1,18 +1,19 @@
 """
 Replay engine for Project Falcon.
 
-Coordinates the replay infrastructure used during historical
-backtesting.
+Coordinates deterministic historical replay execution.
 
 Responsibilities:
-    - Own the replay dependencies.
+    - Own replay dependencies.
     - Validate replay components.
-    - Expose replay infrastructure.
+    - Consume historical candles.
+    - Synchronize ReplayClock progression.
+    - Emit immutable ReplayEvent objects.
 
 The ReplayEngine intentionally does NOT implement:
 
-    - Historical replay loop
     - Strategy execution
+    - Signal generation
     - Order execution
     - Portfolio updates
     - Performance reporting
@@ -20,17 +21,33 @@ The ReplayEngine intentionally does NOT implement:
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 from app.backtest.historical_provider import HistoricalDataProvider
 from app.backtest.replay_clock import ReplayClock
+from app.backtest.replay_event import ReplayEvent
 
 
 class ReplayEngine:
     """
-    Coordinates the replay infrastructure.
+    Coordinates deterministic historical replay.
 
-    The ReplayEngine owns the historical data provider and the
-    replay clock. Future revisions will use these dependencies to
-    replay historical candles through the existing trading domain.
+    The ReplayEngine connects historical market data with the
+    replay timeline. Each consumed candle advances the replay
+    clock and produces a ReplayEvent for downstream consumers.
+
+    Parameters
+    ----------
+    provider:
+        Historical data source.
+
+    clock:
+        Deterministic replay clock.
+
+    Raises
+    ------
+    TypeError
+        If dependencies do not match the required contracts.
     """
 
     def __init__(
@@ -71,13 +88,51 @@ class ReplayEngine:
     @property
     def provider(self) -> HistoricalDataProvider:
         """
-        Return the historical data provider.
+        Return the configured historical data provider.
+
+        Returns
+        -------
+        HistoricalDataProvider
+            Provider used for replay input.
         """
+
         return self._provider
 
     @property
     def clock(self) -> ReplayClock:
         """
-        Return the replay clock.
+        Return the configured replay clock.
+
+        Returns
+        -------
+        ReplayClock
+            Clock controlling simulated replay time.
         """
+
         return self._clock
+
+    def replay(self) -> Iterator[ReplayEvent]:
+        """
+        Replay historical candles deterministically.
+
+        Each candle from the historical provider advances the
+        replay clock and is converted into a ReplayEvent.
+
+        Yields
+        ------
+        ReplayEvent
+            Immutable replay event containing timestamp and candle.
+
+        Notes
+        -----
+        Empty historical datasets are supported and result in
+        an empty iterator.
+        """
+
+        for candle in self._provider.candles():
+            self._clock.advance(candle.timestamp)
+
+            yield ReplayEvent(
+                timestamp=candle.timestamp,
+                candle=candle,
+            )
