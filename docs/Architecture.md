@@ -434,15 +434,274 @@ Consistent with dependency inversion principles.
 The provider should retrieve data—not own the broker lifecycle.
 
 =======================================================================
+22. Architecture structure
+PS C:\Users\Admin\Documents\project-falcon> tree .\app\ /F
+Folder PATH listing
+Volume serial number is 96CD-E064
+C:\USERS\ADMIN\DOCUMENTS\PROJECT-FALCON\APP
+│   __init__.py
+│
+├───ai
+├───analytics
+│   │   result.py
+│   │
+│   └───__pycache__
+│           result.cpython-313.pyc
+│
+├───backtest
+│   │   backtest_result.py
+│   │   backtest_session.bkp.py
+│   │   backtest_session.py
+│   │   csv_provider.py
+│   │   historical_provider.py
+│   │   performance_metrics.py
+│   │   performance_snapshot.py
+│   │   replay_clock.py
+│   │   replay_engine.py
+│   │   replay_event.py
+│   │   __init__.py
+│   │
+│   └───__pycache__
+│           backtest_result.cpython-313.pyc
+│           backtest_session.cpython-313.pyc
+│           csv_provider.cpython-313.pyc
+│           historical_provider.cpython-313.pyc
+│           performance_metrics.cpython-313.pyc
+│           performance_snapshot.cpython-313.pyc
+│           replay_clock.cpython-313.pyc
+│           replay_engine.cpython-313.pyc
+│           replay_event.cpython-313.pyc
+│           __init__.cpython-313.pyc
+│
+├───broker
+│   │   broker_client.py
+│   │   exceptions.py
+│   │   factory.py
+│   │   paper_broker.py
+│   │   zerodha_broker.py
+│   │   __init__.py
+│   │
+│   └───__pycache__
+│           broker_client.cpython-313.pyc
+│           exceptions.cpython-313.pyc
+│           factory.cpython-313.pyc
+│           paper_broker.cpython-313.pyc
+│           zerodha_broker.cpython-313.pyc
+│           __init__.cpython-313.pyc
+│
+├───config
+│   │   loader.py
+│   │   manager.py
+│   │   settings.py
+│   │   __init__.py
+│   │
+│   ├───config
+│   ├───core
+│   ├───infrastructure
+│   └───__pycache__
+│           loader.cpython-313.pyc
+│           manager.cpython-313.pyc
+│           settings.cpython-313.pyc
+│           __init__.cpython-313.pyc
+│
+├───core
+│   │   application.py
+│   │   constants.py
+│   │   database.py
+│   │   health.py
+│   │   logger.py
+│   │   paths.py
+│   │   __init__.py
+│   │
+│   └───__pycache__
+│           application.cpython-313.pyc
+│           database.cpython-313.pyc
+│           health.cpython-313.pyc
+│           logger.cpython-313.pyc
+│           __init__.cpython-313.pyc
+│
+├───dashboard
+├───execution
+├───indicators
+│   │   ema.bkp.py
+│   │   ema.py
+│   │   indicator.py
+│   │   moving_average.py
+│   │   sma.py
+│   │   __init__.py
+│   │
+│   └───__pycache__
+│           ema.cpython-313.pyc
+│           indicator.cpython-313.pyc
+│           moving_average.cpython-313.pyc
+│           sma.cpython-313.pyc
+│           __init__.cpython-313.pyc
+│
+├───market
+│   │   candle.py
+│   │   instrument.py
+│   │   option_type.py
+│   │   timeframe.py
+│   │   __init__.py
+│   │
+│   └───__pycache__
+│           candle.cpython-313.pyc
+│           instrument.cpython-313.pyc
+│           option_type.cpython-313.pyc
+│           timeframe.cpython-313.pyc
+│           __init__.cpython-313.pyc
+│
+├───notifications
+├───optionchain
+├───persistence
+│   │   __init__.py
+│   │
+│   ├───models
+│   │       application_event.py
+│   │       market_data.py
+│   │       position.py
+│   │       trade.py
+│   │       __init__.py
+│   │
+│   ├───repositories
+│   │   │   application_event_repository.py
+│   │   │   base_repository.py
+│   │   │   event_repository - Copy.py
+│   │   │   market_data_repository.py
+│   │   │   position_repository.py
+│   │   │   trade_repository.py
+│   │   │   __init__.py
+│   │   │
+│   │   └───__pycache__
+│   │           base_repository.cpython-313.pyc
+│   │           __init__.cpython-313.pyc
+│   │
+│   └───__pycache__
+│           __init__.cpython-313.pyc
+│
+├───portfolio
+├───risk
+├───scheduler
+├───services
+│   │   market_data.py
+│   │   normalizer.py
+│   │
+│   ├───providers
+│   │   │   market_provider.py
+│   │   │   zerodha_provider.py
+│   │   │   __init__.py
+│   │   │
+│   │   └───__pycache__
+│   │           market_provider.cpython-313.pyc
+│   │           zerodha_provider.cpython-313.pyc
+│   │           __init__.cpython-313.pyc
+│   │
+│   └───__pycache__
+│           market_data.cpython-313.pyc
+│           normalizer.cpython-313.pyc
+│
+├───storage
+├───strategies
+│   │   context.py
+│   │   ema_crossover.py
+│   │   engine.py
+│   │   signal.py
+│   │   strategy.py
+│   │   __init__.py
+│   │
+│   └───__pycache__
+│           context.cpython-313.pyc
+│           ema_crossover.cpython-313.pyc
+│           engine.cpython-313.pyc
+│           signal.cpython-313.pyc
+│           strategy.cpython-313.pyc
+│           __init__.cpython-313.pyc
+│
+├───trading
+│   │   execution.py
+│   │   performance.py
+│   │   portfolio.bkp2.py
+│   │   portfolio.bkp3.py
+│   │   portfolio.py
+│   │   position.bkp1.py
+│   │   position.bkp2.py
+│   │   position.py
+│   │   position_status.py
+│   │   risk_manager.py
+│   │   trade_request.py
+│   │   trading_service.bkp.py
+│   │   trading_service.py
+│   │
+│   └───__pycache__
+│           execution.cpython-313.pyc
+│           performance.cpython-313.pyc
+│           portfolio.cpython-313.pyc
+│           position.cpython-313.pyc
+│           position_status.cpython-313.pyc
+│           risk_manager.cpython-313.pyc
+│           trade_request.cpython-313.pyc
+│           trading_service.cpython-313.pyc
+│
+├───utils
+└───__pycache__
+        __init__.cpython-313.pyc
 
+PS C:\Users\Admin\Documents\project-falcon>
 
 =======================================================================
+23. 
+Application Layer (app/services)
 
+Responsibilities
+- Coordinate domain and infrastructure components.
+- Translate between application workflows and domain models.
+- Remain stateless where practical.
+- Contain no domain business rules.
+
+Allowed dependencies
+- market
+- strategies
+- trading
+- backtest (when orchestrating workflows)
+- core
+- config
+
+Forbidden responsibilities
+- Portfolio accounting
+- Risk decisions
+- Replay mechanics
+- Broker communication
+- Persistence implementation
 
 =======================================================================
-
+24. 
+                     Dashboard / AI
+                           │
+                   Application Services
+                (TradeSignalTranslator)
+                           │
+      ┌────────────────────┴────────────────────┐
+      │                                         │
+ Backtest Infrastructure                  Trading Domain
+      │                                         │
+ ReplayEngine                           TradingService
+ ReplayClock                            RiskManager
+ ReplayEvent                            Portfolio
+ BacktestSession                        Position
+ PerformanceMetrics                     TradeRequest
+ PerformanceSnapshot
+ BacktestResult
+      │
+      └───────────────┬──────────────────────────┘
+                      │
+              Market / Strategies
+                      │
+             Indicators / Core Domain
+                      │
+        Broker / Persistence / Configuration
 
 =======================================================================
+25. 
 
 
 =======================================================================

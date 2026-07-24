@@ -1,45 +1,47 @@
 """
 Backtest session for Project Falcon.
 
-Coordinates deterministic historical replay with strategy evaluation.
+Coordinates deterministic historical replay with strategy evaluation
+and trading lifecycle execution.
 
 Responsibilities:
-    - Own the replay session lifecycle.
-    - Validate application dependencies.
-    - Execute deterministic replay.
-    - Build StrategyContext instances.
-    - Invoke trading strategies.
+    - Own replay session lifecycle.
+    - Build StrategyContext snapshots.
+    - Evaluate strategies.
+    - Translate BUY signals into TradeRequests.
+    - Delegate trade execution to TradingService.
+    - Coordinate position exits.
 
 The BacktestSession intentionally does NOT implement:
 
-    - Order execution
-    - Portfolio management
     - Risk management
-    - Performance reporting
-    - Signal interpretation
+    - Order execution
+    - Portfolio accounting
+    - Position lifecycle rules
+    - Performance calculations
 """
 
 from __future__ import annotations
 
+from app.backtest.backtest_result import BacktestResult
+from app.backtest.performance_metrics import PerformanceMetrics
+from app.backtest.performance_snapshot import PerformanceSnapshot
 from app.backtest.replay_engine import ReplayEngine
 from app.market.candle import Candle
 from app.market.instrument import Instrument
+from app.services.trade_signal_translator import TradeSignalTranslator
 from app.strategies.context import StrategyContext
+from app.strategies.signal import Signal
 from app.strategies.strategy import Strategy
+from app.trading.trading_service import TradingService
 
 
 class BacktestSession:
     """
-    Application service coordinating historical replay.
+    Application service coordinating deterministic backtesting.
 
-    A BacktestSession composes the replay infrastructure with the
-    strategy domain. During replay it maintains cumulative market
-    history, constructs StrategyContext objects, and invokes the
-    configured strategy for every replay event.
-
-    The strategy output is intentionally ignored during this
-    milestone. Future milestones will translate strategy signals
-    into executable trading decisions.
+    The session connects replay infrastructure with strategy evaluation
+    and trading lifecycle orchestration.
     """
 
     def __init__(
@@ -47,26 +49,10 @@ class BacktestSession:
         replay_engine: ReplayEngine,
         instrument: Instrument,
         strategy: Strategy,
+        trading_service: TradingService,
+        signal_translator: TradeSignalTranslator,
+        quantity: int,
     ) -> None:
-        """
-        Initialize the backtest session.
-
-        Parameters
-        ----------
-        replay_engine:
-            Replay engine used to execute historical replay.
-
-        instrument:
-            Instrument associated with the replay session.
-
-        strategy:
-            Strategy evaluated during replay.
-
-        Raises
-        ------
-        TypeError
-            If any dependency has an invalid type.
-        """
 
         if not isinstance(replay_engine, ReplayEngine):
             raise TypeError(
@@ -83,89 +69,192 @@ class BacktestSession:
                 "strategy must be a Strategy."
             )
 
+        if not isinstance(trading_service, TradingService):
+            raise TypeError(
+                "trading_service must be a TradingService."
+            )
+
+        if not isinstance(
+            signal_translator,
+            TradeSignalTranslator,
+        ):
+            raise TypeError(
+                "signal_translator must be a TradeSignalTranslator."
+            )
+
+        if quantity <= 0:
+            raise ValueError(
+                "quantity must be greater than zero."
+            )
+
         self._replay_engine = replay_engine
         self._instrument = instrument
         self._strategy = strategy
+        self._trading_service = trading_service
+        self._signal_translator = signal_translator
+        self._quantity = quantity
 
     @property
     def replay_engine(self) -> ReplayEngine:
-        """
-        Return the replay engine owned by this session.
-        """
-
         return self._replay_engine
 
     @property
     def instrument(self) -> Instrument:
-        """
-        Return the instrument associated with this session.
-        """
-
         return self._instrument
 
     @property
     def strategy(self) -> Strategy:
-        """
-        Return the strategy evaluated during replay.
-        """
-
         return self._strategy
 
-    def run(self) -> None:
+    def run(self) -> BacktestResult:
         """
-        Execute the backtest session.
+        Execute the complete backtest lifecycle.
 
-        The replay engine is consumed sequentially. For each replay
-        event, the cumulative candle history is updated, a new
-        StrategyContext is constructed, and the configured strategy
-        is evaluated.
+        Workflow:
 
-        The returned Signal is intentionally ignored during this
-        milestone.
+            Replay candle
+                ↓
+            Build StrategyContext
+                ↓
+            Evaluate Strategy
+                ↓
+            Handle Signal
+                ↓
+            Close remaining positions
+                ↓
+            Build BacktestResult
 
-        Empty replay datasets are treated as successful execution.
-
-        Raises
-        ------
-        Exception
-            Any exception raised by the replay engine or strategy is
-            propagated unchanged.
+        Returns
+        -------
+        BacktestResult
+            Immutable completed backtest result.
         """
 
         history: list[Candle] = []
 
+        first_candle: Candle | None = None
+        last_candle: Candle | None = None
+
+        trades_today = 0
+
         for replay_event in self._replay_engine.replay():
-            history.append(replay_event.candle)
+
+            candle = replay_event.candle
+
+            if first_candle is None:
+                first_candle = candle
+
+            last_candle = candle
+
+            history.append(candle)
 
             context = self._build_context(history)
 
-            self._strategy.evaluate(context)
+            signal = self._strategy.evaluate(context)
+
+            self._handle_signal(
+                signal=signal,
+                candle=candle,
+                trades_today=trades_today,
+            )
+
+            if signal == Signal.BUY:
+                trades_today += 1
+
+        if last_candle is not None:
+            self._trading_service.close_all_open_positions(
+                exit_price=last_candle.close,
+                exit_time=last_candle.timestamp,
+            )
+
+        return self._build_result(
+            first_candle=first_candle,
+            last_candle=last_candle,
+        )
+
+    def _handle_signal(
+        self,
+        *,
+        signal: Signal,
+        candle: Candle,
+        trades_today: int,
+    ) -> None:
+
+        if signal == Signal.HOLD:
+            return
+
+        if signal == Signal.BUY:
+
+            trade_request = self._signal_translator.translate(
+                instrument=self._instrument,
+                signal=signal,
+                quantity=self._quantity,
+            )
+
+            self._trading_service.submit_trade(
+                trade_request,
+                execution_price=candle.close,
+                trades_today=trades_today,
+            )
+
+            return
+
+        if signal == Signal.SELL:
+
+            self._trading_service.close_open_position(
+                instrument=self._instrument,
+                exit_price=candle.close,
+                exit_time=candle.timestamp,
+            )
+
+            return
+
+        raise ValueError(
+            f"Unsupported signal: {signal}"
+        )
 
     def _build_context(
         self,
         candles: list[Candle],
     ) -> StrategyContext:
-        """
-        Build a strategy context for the current replay state.
-
-        Parameters
-        ----------
-        candles:
-            Cumulative candle history observed during replay.
-
-        Returns
-        -------
-        StrategyContext
-            Immutable snapshot supplied to the strategy.
-        """
-
-        if not candles:
-            raise ValueError(
-                "StrategyContext requires at least one candle."
-            )
 
         return StrategyContext(
             instrument=self._instrument,
             timeframe=candles[-1].timeframe,
             candles=list(candles),
+        )
+
+    def _build_result(
+        self,
+        *,
+        first_candle: Candle | None,
+        last_candle: Candle | None,
+    ) -> BacktestResult:
+
+        performance: PerformanceSnapshot = (
+            PerformanceMetrics.calculate(
+                self._trading_service
+                .portfolio
+                .get_closed_positions()
+            )
+        )
+
+        return BacktestResult(
+            instrument=self._instrument,
+            strategy_name=self._strategy.__class__.__name__,
+            start_time=(
+                first_candle.timestamp
+                if first_candle
+                else last_candle.timestamp
+                if last_candle
+                else None
+            ),
+            end_time=(
+                last_candle.timestamp
+                if last_candle
+                else first_candle.timestamp
+                if first_candle
+                else None
+            ),
+            performance=performance,
         )

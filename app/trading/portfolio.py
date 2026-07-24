@@ -341,3 +341,48 @@ class Portfolio:
 
         expectancy=self.expectancy,
         )
+
+    def get_open_position(self) -> Position | None:
+        """
+        Return the currently open position.
+
+        Returns
+        -------
+        Position | None
+            The currently open position, or None when the
+            portfolio contains no open position.
+        """
+
+        return self.open_position
+
+    def get_open_positions(self) -> tuple[Position, ...]:
+        """
+        Return all open positions.
+
+        Returns
+        -------
+        tuple[Position, ...]
+            Immutable collection of open positions.
+        """
+
+        return tuple(
+            position
+            for position in self._positions.values()
+            if position.is_open
+        )
+
+    def get_closed_positions(self) -> tuple[Position, ...]:
+        """
+        Return all closed positions.
+
+        Returns
+        -------
+        tuple[Position, ...]
+            Immutable collection of closed positions.
+        """
+
+        return tuple(
+            position
+            for position in self._positions.values()
+            if position.is_closed
+        )

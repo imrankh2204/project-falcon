@@ -1,0 +1,2 @@
+strategy_name,instrument,start_time,end_time,trade_count,winning_trades,losing_trades,win_rate,gross_profit,gross_loss,net_profit,average_win,average_loss,largest_win,largest_loss
+EMACrossoverStrategy,NIFTY,2026-01-01T09:15:00,2026-01-01T10:50:00,0,0,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

@@ -1,0 +1,28 @@
+{
+    "instrument": {
+        "exchange": "NSE",
+        "symbol": "NIFTY",
+        "instrument_token": 0,
+        "lot_size": 50,
+        "tick_size": 0.05,
+        "expiry": null,
+        "strike": null,
+        "option_type": null
+    },
+    "strategy_name": "EMACrossoverStrategy",
+    "start_time": "2026-01-01T09:15:00",
+    "end_time": "2026-01-01T10:50:00",
+    "performance": {
+        "trade_count": 0,
+        "winning_trades": 0,
+        "losing_trades": 0,
+        "win_rate": 0.0,
+        "gross_profit": 0.0,
+        "gross_loss": 0.0,
+        "net_profit": 0.0,
+        "average_win": 0.0,
+        "average_loss": 0.0,
+        "largest_win": 0.0,
+        "largest_loss": 0.0
+    }
+}
