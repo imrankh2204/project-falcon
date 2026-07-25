@@ -3,19 +3,20 @@ Project Falcon backtest executable entry point.
 
 This module acts as the Composition Root for backtest execution.
 
-Responsibilities:
-    - Build application dependencies.
-    - Execute BacktestApplication.
-    - Generate reports.
-    - Persist exported reports.
+Responsibilities
+----------------
+- Build application dependencies.
+- Execute BacktestApplication.
+- Generate reports.
+- Persist exported reports.
 
 This module intentionally does NOT implement:
 
-    - Trading logic
-    - Strategy logic
-    - Replay logic
-    - Risk rules
-    - Performance calculations
+- Trading logic
+- Strategy logic
+- Replay logic
+- Risk rules
+- Performance calculations
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from pathlib import Path
 from app.backtest.backtest_config import BacktestConfig
 from app.backtest.backtest_session import BacktestSession
 from app.backtest.csv_provider import CsvHistoricalProvider
+from app.backtest.execution_price_model import ExecutionPriceModel
 from app.backtest.replay_clock import ReplayClock
 from app.backtest.replay_engine import ReplayEngine
 from app.backtest.reporting.builder import ReportBuilder
@@ -34,7 +36,9 @@ from app.backtest.reporting.json import JsonExporter
 from app.core.backtest_application import BacktestApplication
 from app.market.instrument import Instrument
 from app.market.timeframe import TimeFrame
-from app.services.trade_signal_translator import TradeSignalTranslator
+from app.services.trade_signal_translator import (
+    TradeSignalTranslator,
+)
 from app.strategies.ema_crossover import EMACrossoverStrategy
 from app.trading.execution import PaperExecutionEngine
 from app.trading.portfolio import Portfolio
@@ -46,17 +50,7 @@ def build_backtest_application(
     config: BacktestConfig,
 ) -> BacktestApplication:
     """
-    Build the complete backtest application dependency graph.
-
-    Parameters
-    ----------
-    config
-        Immutable backtest runtime configuration.
-
-    Returns
-    -------
-    BacktestApplication
-        Fully configured backtest application.
+    Build the complete backtest dependency graph.
     """
 
     provider = CsvHistoricalProvider(
@@ -64,12 +58,15 @@ def build_backtest_application(
         timeframe=config.timeframe,
     )
 
-    first_candle = next(
-        provider.candles()
-    )
+    try:
+        first_candle = next(provider.candles())
+    except StopIteration as exc:
+        raise ValueError(
+            "Historical dataset is empty."
+        ) from exc
 
     replay_clock = ReplayClock(
-        start_time=first_candle.timestamp
+        start_time=first_candle.timestamp,
     )
 
     replay_engine = ReplayEngine(
@@ -96,18 +93,25 @@ def build_backtest_application(
 
     signal_translator = TradeSignalTranslator()
 
+    execution_price_model = ExecutionPriceModel(
+        slippage_per_unit=0.05,
+    )
+
     session = BacktestSession(
         replay_engine=replay_engine,
         instrument=config.instrument,
         strategy=strategy,
         trading_service=trading_service,
         signal_translator=signal_translator,
+        execution_price_model=execution_price_model,
         quantity=config.quantity,
     )
 
+    report_builder = ReportBuilder()
+
     return BacktestApplication(
         session=session,
-        report_builder=ReportBuilder(),
+        report_builder=report_builder,
     )
 
 
@@ -119,17 +123,6 @@ def write_report(
 ) -> None:
     """
     Persist exported report content.
-
-    Parameters
-    ----------
-    output_directory
-        Target directory.
-
-    filename
-        Output filename.
-
-    content
-        Serialized report content.
     """
 
     output_directory.mkdir(
@@ -148,11 +141,6 @@ def write_report(
 def main() -> int:
     """
     Execute a complete Falcon backtest.
-
-    Returns
-    -------
-    int
-        Process exit code.
     """
 
     config = BacktestConfig(
@@ -177,11 +165,7 @@ def main() -> int:
         config
     )
 
-    result = application.run()
-
-    report = ReportBuilder().build(
-        result
-    )
+    report = application.run()
 
     if config.export_console:
         print(

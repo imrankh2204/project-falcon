@@ -8,7 +8,8 @@ Responsibilities:
     - Own replay session lifecycle.
     - Build StrategyContext snapshots.
     - Evaluate strategies.
-    - Translate BUY signals into TradeRequests.
+    - Translate trading signals into TradeRequests.
+    - Model execution prices.
     - Delegate trade execution to TradingService.
     - Coordinate position exits.
 
@@ -24,6 +25,7 @@ The BacktestSession intentionally does NOT implement:
 from __future__ import annotations
 
 from app.backtest.backtest_result import BacktestResult
+from app.backtest.execution_price_model import ExecutionPriceModel
 from app.backtest.performance_metrics import PerformanceMetrics
 from app.backtest.performance_snapshot import PerformanceSnapshot
 from app.backtest.replay_engine import ReplayEngine
@@ -40,8 +42,8 @@ class BacktestSession:
     """
     Application service coordinating deterministic backtesting.
 
-    The session connects replay infrastructure with strategy evaluation
-    and trading lifecycle orchestration.
+    The session connects replay infrastructure with strategy evaluation,
+    execution price modelling, and trading lifecycle orchestration.
     """
 
     def __init__(
@@ -51,6 +53,7 @@ class BacktestSession:
         strategy: Strategy,
         trading_service: TradingService,
         signal_translator: TradeSignalTranslator,
+        execution_price_model: ExecutionPriceModel,
         quantity: int,
     ) -> None:
 
@@ -82,6 +85,14 @@ class BacktestSession:
                 "signal_translator must be a TradeSignalTranslator."
             )
 
+        if not isinstance(
+            execution_price_model,
+            ExecutionPriceModel,
+        ):
+            raise TypeError(
+                "execution_price_model must be an ExecutionPriceModel."
+            )
+
         if quantity <= 0:
             raise ValueError(
                 "quantity must be greater than zero."
@@ -92,6 +103,7 @@ class BacktestSession:
         self._strategy = strategy
         self._trading_service = trading_service
         self._signal_translator = signal_translator
+        self._execution_price_model = execution_price_model
         self._quantity = quantity
 
     @property
@@ -106,28 +118,15 @@ class BacktestSession:
     def strategy(self) -> Strategy:
         return self._strategy
 
+    @property
+    def execution_price_model(
+        self,
+    ) -> ExecutionPriceModel:
+        return self._execution_price_model
+
     def run(self) -> BacktestResult:
         """
         Execute the complete backtest lifecycle.
-
-        Workflow:
-
-            Replay candle
-                ↓
-            Build StrategyContext
-                ↓
-            Evaluate Strategy
-                ↓
-            Handle Signal
-                ↓
-            Close remaining positions
-                ↓
-            Build BacktestResult
-
-        Returns
-        -------
-        BacktestResult
-            Immutable completed backtest result.
         """
 
         history: list[Candle] = []
@@ -191,9 +190,15 @@ class BacktestSession:
                 quantity=self._quantity,
             )
 
+            execution_price = (
+                self._execution_price_model.buy_price(
+                    candle.close
+                )
+            )
+
             self._trading_service.submit_trade(
                 trade_request,
-                execution_price=candle.close,
+                execution_price=execution_price,
                 trades_today=trades_today,
             )
 
@@ -201,9 +206,15 @@ class BacktestSession:
 
         if signal == Signal.SELL:
 
+            exit_price = (
+                self._execution_price_model.sell_price(
+                    candle.close
+                )
+            )
+
             self._trading_service.close_open_position(
                 instrument=self._instrument,
-                exit_price=candle.close,
+                exit_price=exit_price,
                 exit_time=candle.timestamp,
             )
 
