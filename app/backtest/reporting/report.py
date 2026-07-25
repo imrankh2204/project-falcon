@@ -16,7 +16,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from app.backtest.performance_snapshot import PerformanceSnapshot
+from app.backtest.advanced_performance_snapshot import (
+    AdvancedPerformanceSnapshot,
+)
+from app.backtest.equity_curve_snapshot import (
+    EquityCurveSnapshot,
+)
+from app.backtest.performance_snapshot import (
+    PerformanceSnapshot,
+)
 from app.market.instrument import Instrument
 
 
@@ -24,10 +32,6 @@ from app.market.instrument import Instrument
 class BacktestReport:
     """
     Immutable report representing a completed backtest.
-
-    The report intentionally contains only presentation-facing metadata and
-    immutable performance statistics. It is the canonical model consumed by
-    report exporters and other presentation layers.
 
     Attributes
     ----------
@@ -44,13 +48,23 @@ class BacktestReport:
         Timestamp of the final replayed candle.
 
     performance
-        Immutable snapshot of calculated performance statistics.
+        Core performance statistics.
+
+    advanced_performance
+        Risk-adjusted performance analytics.
+
+    equity_curve
+        Immutable equity curve statistics.
     """
 
     instrument: Instrument
     strategy_name: str
 
-    start_time: datetime
-    end_time: datetime
+    start_time: datetime | None
+    end_time: datetime | None
 
     performance: PerformanceSnapshot
+
+    advanced_performance: AdvancedPerformanceSnapshot
+
+    equity_curve: EquityCurveSnapshot

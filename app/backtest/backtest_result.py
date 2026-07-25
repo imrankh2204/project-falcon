@@ -12,7 +12,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from app.backtest.performance_snapshot import PerformanceSnapshot
+from app.backtest.advanced_performance_snapshot import (
+    AdvancedPerformanceSnapshot,
+)
+from app.backtest.equity_curve_snapshot import (
+    EquityCurveSnapshot,
+)
+from app.backtest.performance_snapshot import (
+    PerformanceSnapshot,
+)
 from app.market.instrument import Instrument
 
 
@@ -30,21 +38,31 @@ class BacktestResult:
         Name of the strategy that produced the result.
 
     start_time
-        Timestamp of the first replayed candle, or None when the
-        historical dataset is empty.
+        Timestamp of the first replayed candle.
 
     end_time
-        Timestamp of the final replayed candle, or None when the
-        historical dataset is empty.
+        Timestamp of the final replayed candle.
 
     performance
-        Immutable summary of calculated performance statistics.
+        Basic performance statistics.
+
+    advanced_performance
+        Advanced performance analytics.
+
+    equity_curve
+        Immutable equity curve analytics.
     """
 
     instrument: Instrument
+
     strategy_name: str
 
     start_time: datetime | None
+
     end_time: datetime | None
 
     performance: PerformanceSnapshot
+
+    advanced_performance: AdvancedPerformanceSnapshot
+
+    equity_curve: EquityCurveSnapshot

@@ -12,6 +12,7 @@ Responsibilities:
     - Model execution prices.
     - Delegate trade execution to TradingService.
     - Coordinate position exits.
+    - Produce performance analytics.
 
 The BacktestSession intentionally does NOT implement:
 
@@ -24,7 +25,18 @@ The BacktestSession intentionally does NOT implement:
 
 from __future__ import annotations
 
+from app.backtest.advanced_metrics import (
+    AdvancedPerformanceMetrics,
+)
+from app.backtest.advanced_performance_snapshot import (
+    AdvancedPerformanceSnapshot,
+)
 from app.backtest.backtest_result import BacktestResult
+from app.backtest.equity_curve import EquityCurve
+from app.backtest.equity_curve_snapshot import (
+    EquityCurveSnapshot,
+)
+from app.backtest.execution_cost_model import ExecutionCostModel
 from app.backtest.execution_price_model import ExecutionPriceModel
 from app.backtest.performance_metrics import PerformanceMetrics
 from app.backtest.performance_snapshot import PerformanceSnapshot
@@ -41,9 +53,6 @@ from app.trading.trading_service import TradingService
 class BacktestSession:
     """
     Application service coordinating deterministic backtesting.
-
-    The session connects replay infrastructure with strategy evaluation,
-    execution price modelling, and trading lifecycle orchestration.
     """
 
     def __init__(
@@ -54,6 +63,7 @@ class BacktestSession:
         trading_service: TradingService,
         signal_translator: TradeSignalTranslator,
         execution_price_model: ExecutionPriceModel,
+        execution_cost_model: ExecutionCostModel,
         quantity: int,
     ) -> None:
 
@@ -93,6 +103,14 @@ class BacktestSession:
                 "execution_price_model must be an ExecutionPriceModel."
             )
 
+        if not isinstance(
+            execution_cost_model,
+            ExecutionCostModel,
+        ):
+            raise TypeError(
+                "execution_cost_model must be an ExecutionCostModel."
+            )
+
         if quantity <= 0:
             raise ValueError(
                 "quantity must be greater than zero."
@@ -104,30 +122,10 @@ class BacktestSession:
         self._trading_service = trading_service
         self._signal_translator = signal_translator
         self._execution_price_model = execution_price_model
+        self._execution_cost_model = execution_cost_model
         self._quantity = quantity
 
-    @property
-    def replay_engine(self) -> ReplayEngine:
-        return self._replay_engine
-
-    @property
-    def instrument(self) -> Instrument:
-        return self._instrument
-
-    @property
-    def strategy(self) -> Strategy:
-        return self._strategy
-
-    @property
-    def execution_price_model(
-        self,
-    ) -> ExecutionPriceModel:
-        return self._execution_price_model
-
     def run(self) -> BacktestResult:
-        """
-        Execute the complete backtest lifecycle.
-        """
 
         history: list[Candle] = []
 
@@ -217,12 +215,12 @@ class BacktestSession:
                 exit_price=exit_price,
                 exit_time=candle.timestamp,
             )
-
+            
             return
-
-        raise ValueError(
-            f"Unsupported signal: {signal}"
-        )
+            
+            raise ValueError(
+                f"Unsupported signal: {signal}"
+            )
 
     def _build_context(
         self,
@@ -242,11 +240,30 @@ class BacktestSession:
         last_candle: Candle | None,
     ) -> BacktestResult:
 
+        closed_positions = (
+            self._trading_service
+            .portfolio
+            .get_closed_positions()
+        )
+
         performance: PerformanceSnapshot = (
             PerformanceMetrics.calculate(
-                self._trading_service
-                .portfolio
-                .get_closed_positions()
+                closed_positions,
+                execution_cost_model=(
+                    self._execution_cost_model
+                ),
+            )
+        )
+
+        advanced_performance: (
+            AdvancedPerformanceSnapshot
+        ) = AdvancedPerformanceMetrics.calculate(
+            closed_positions,
+        )
+
+        equity_curve: EquityCurveSnapshot = (
+            EquityCurve.calculate(
+                closed_positions,
             )
         )
 
@@ -256,16 +273,14 @@ class BacktestSession:
             start_time=(
                 first_candle.timestamp
                 if first_candle
-                else last_candle.timestamp
-                if last_candle
                 else None
             ),
             end_time=(
                 last_candle.timestamp
                 if last_candle
-                else first_candle.timestamp
-                if first_candle
                 else None
             ),
             performance=performance,
+            advanced_performance=advanced_performance,
+            equity_curve=equity_curve,
         )

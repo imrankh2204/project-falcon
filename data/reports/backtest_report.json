@@ -24,5 +24,17 @@
         "average_loss": 0.0,
         "largest_win": 0.0,
         "largest_loss": 0.0
+    },
+    "advanced_performance": {
+        "profit_factor": 0.0,
+        "expectancy": 0.0,
+        "sharpe_ratio": 0.0,
+        "sortino_ratio": 0.0
+    },
+    "equity_curve": {
+        "points": [],
+        "peak_equity": 0.0,
+        "maximum_drawdown": 0.0,
+        "maximum_drawdown_percentage": 0.0
     }
 }
