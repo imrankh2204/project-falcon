@@ -4,12 +4,13 @@ CSV-backed historical data provider.
 This module provides a production-ready implementation of
 ``HistoricalDataProvider`` that loads historical OHLCV candle data from a CSV
 file, validates it during construction, converts every record into the
-project's ``Candle`` domain model, and caches the resulting objects for
-subsequent iteration.
+project's ``Candle`` domain model, optionally filters candles using a
+``DateRange``, and caches the resulting objects for subsequent iteration.
 
 Design principles:
 - Fail-fast validation
 - Immutable cached historical dataset
+- Deterministic date filtering
 - Single responsibility
 - Strong typing
 - No replay or execution responsibilities
@@ -23,7 +24,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Final
 
-from app.backtest.historical_provider import HistoricalDataProvider
+from app.backtest.date_range import (
+    DateRange,
+)
+from app.backtest.historical_provider import (
+    HistoricalDataProvider,
+)
 from app.market.candle import Candle
 from app.market.timeframe import TimeFrame
 
@@ -35,6 +41,9 @@ class CsvHistoricalProvider(HistoricalDataProvider):
     The CSV file is fully validated and loaded during initialization.
     After construction, candle iteration is performed from an in-memory cache,
     avoiding repeated file I/O.
+
+    Optional DateRange filtering is applied during loading so the cached
+    dataset always represents the configured execution window.
 
     Required CSV columns::
 
@@ -53,15 +62,21 @@ class CsvHistoricalProvider(HistoricalDataProvider):
     ----------
     csv_path:
         Path to the CSV file.
+
     timeframe:
         Timeframe assigned to every constructed Candle.
+
+    date_range:
+        Optional inclusive execution time window.
 
     Raises
     ------
     TypeError
         If constructor arguments have invalid types.
+
     FileNotFoundError
         If the CSV file does not exist.
+
     ValueError
         If the CSV is malformed or contains invalid data.
     """
@@ -83,18 +98,39 @@ class CsvHistoricalProvider(HistoricalDataProvider):
         self,
         csv_path: str | Path,
         timeframe: TimeFrame,
+        date_range: DateRange | None = None,
     ) -> None:
-        if not isinstance(csv_path, (str, Path)):
+
+        if not isinstance(
+            csv_path,
+            (str, Path),
+        ):
             raise TypeError(
                 "csv_path must be of type str or pathlib.Path."
             )
 
-        if not isinstance(timeframe, TimeFrame):
+        if not isinstance(
+            timeframe,
+            TimeFrame,
+        ):
             raise TypeError(
                 "timeframe must be an instance of TimeFrame."
             )
 
+        if (
+            date_range is not None
+            and not isinstance(
+                date_range,
+                DateRange,
+            )
+        ):
+            raise TypeError(
+                "date_range must be a DateRange or None."
+            )
+
         self._path: Path = Path(csv_path)
+        self._timeframe: TimeFrame = timeframe
+        self._date_range = date_range
 
         if not self._path.exists():
             raise FileNotFoundError(
@@ -106,7 +142,6 @@ class CsvHistoricalProvider(HistoricalDataProvider):
                 f"CSV path is not a file: {self._path}"
             )
 
-        self._timeframe: TimeFrame = timeframe
         self._candles: tuple[Candle, ...] = self._load()
 
     def candles(self) -> Iterator[Candle]:
@@ -118,22 +153,19 @@ class CsvHistoricalProvider(HistoricalDataProvider):
         Iterator[Candle]
             Chronologically sorted candle sequence.
         """
+
         return iter(self._candles)
 
     def _load(self) -> tuple[Candle, ...]:
         """
-        Load, validate, and cache candles from the CSV file.
+        Load, validate, filter, and cache candles from CSV.
 
         Returns
         -------
         tuple[Candle, ...]
             Chronologically sorted candle cache.
-
-        Raises
-        ------
-        ValueError
-            If CSV structure or values are invalid.
         """
+
         candles: list[Candle] = []
 
         with self._path.open(
@@ -141,10 +173,13 @@ class CsvHistoricalProvider(HistoricalDataProvider):
             encoding="utf-8",
             newline="",
         ) as csv_file:
+
             reader = csv.DictReader(csv_file)
 
             if reader.fieldnames is None:
-                raise ValueError("CSV file is missing a header row.")
+                raise ValueError(
+                    "CSV file is missing a header row."
+                )
 
             fieldnames = {
                 field.strip()
@@ -153,23 +188,55 @@ class CsvHistoricalProvider(HistoricalDataProvider):
             }
 
             missing = self._REQUIRED_COLUMNS - fieldnames
+
             if missing:
                 raise ValueError(
                     "CSV missing required columns: "
                     + ", ".join(sorted(missing))
                 )
 
-            for line_number, row in enumerate(reader, start=2):
-                candles.append(
-                    self._build_candle(
-                        row=row,
-                        line_number=line_number,
-                    )
+            for line_number, row in enumerate(
+                reader,
+                start=2,
+            ):
+
+                candle = self._build_candle(
+                    row=row,
+                    line_number=line_number,
                 )
 
-        candles.sort(key=lambda candle: candle.timestamp)
+                if self._within_date_range(candle):
+                    candles.append(candle)
+
+        candles.sort(
+            key=lambda candle: candle.timestamp
+        )
 
         return tuple(candles)
+
+    def _within_date_range(
+        self,
+        candle: Candle,
+    ) -> bool:
+        """
+        Determine whether a candle belongs to the configured date range.
+
+        DateRange boundaries are inclusive.
+
+        Returns
+        -------
+        bool
+            True if candle is within execution window.
+        """
+
+        if self._date_range is None:
+            return True
+
+        return (
+            self._date_range.start_time
+            <= candle.timestamp
+            <= self._date_range.end_time
+        )
 
     def _build_candle(
         self,
@@ -178,32 +245,39 @@ class CsvHistoricalProvider(HistoricalDataProvider):
         line_number: int,
     ) -> Candle:
         """
-        Construct a validated Candle from a CSV row.
-
-        Parameters
-        ----------
-        row:
-            CSV row.
-        line_number:
-            Source line number for diagnostics.
-
-        Returns
-        -------
-        Candle
-            Parsed candle instance.
-
-        Raises
-        ------
-        ValueError
-            If any field is invalid.
+        Construct a validated Candle from CSV row.
         """
+
         try:
-            timestamp_text = self._require(row, "timestamp")
-            open_text = self._require(row, "open")
-            high_text = self._require(row, "high")
-            low_text = self._require(row, "low")
-            close_text = self._require(row, "close")
-            volume_text = self._require(row, "volume")
+            timestamp_text = self._require(
+                row,
+                "timestamp",
+            )
+
+            open_text = self._require(
+                row,
+                "open",
+            )
+
+            high_text = self._require(
+                row,
+                "high",
+            )
+
+            low_text = self._require(
+                row,
+                "low",
+            )
+
+            close_text = self._require(
+                row,
+                "close",
+            )
+
+            volume_text = self._require(
+                row,
+                "volume",
+            )
 
             timestamp = datetime.strptime(
                 timestamp_text,
@@ -244,32 +318,20 @@ class CsvHistoricalProvider(HistoricalDataProvider):
     ) -> str:
         """
         Retrieve and validate a required CSV field.
-
-        Parameters
-        ----------
-        row:
-            CSV row.
-        column:
-            Required column name.
-
-        Returns
-        -------
-        str
-            Trimmed field value.
-
-        Raises
-        ------
-        ValueError
-            If the field is missing or empty.
         """
+
         value = row.get(column)
 
         if value is None:
-            raise ValueError(f"Missing value for '{column}'.")
+            raise ValueError(
+                f"Missing value for '{column}'."
+            )
 
         value = value.strip()
 
         if not value:
-            raise ValueError(f"Empty value for '{column}'.")
+            raise ValueError(
+                f"Empty value for '{column}'."
+            )
 
         return value

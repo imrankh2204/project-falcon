@@ -107,6 +107,7 @@ class BacktestApplicationFactory:
         provider = CsvHistoricalProvider(
             csv_path=self._config.csv_path,
             timeframe=self._config.timeframe,
+            date_range=self._config.date_range,
         )
 
         try:

@@ -26,6 +26,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.backtest.date_range import (
+    DateRange,
+)
 from app.market.instrument import Instrument
 from app.market.timeframe import TimeFrame
 
@@ -52,6 +55,10 @@ class BacktestConfig:
     output_directory
         Directory where report exporters may write output.
 
+    date_range
+        Optional execution time range. If None, the complete dataset
+        is used.
+
     export_console
         Enable console report exporter.
 
@@ -70,6 +77,8 @@ class BacktestConfig:
 
     output_directory: Path
 
+    date_range: DateRange | None = None
+
     export_console: bool = True
     export_csv: bool = True
     export_json: bool = True
@@ -87,19 +96,36 @@ class BacktestConfig:
             If quantity is not greater than zero.
         """
 
-        if not isinstance(self.csv_path, Path):
+        if not isinstance(
+            self.csv_path,
+            Path,
+        ):
             raise TypeError(
                 "csv_path must be a pathlib.Path."
             )
 
-        if not isinstance(self.instrument, Instrument):
+        if not isinstance(
+            self.instrument,
+            Instrument,
+        ):
             raise TypeError(
                 "instrument must be an Instrument."
             )
 
-        if not isinstance(self.timeframe, TimeFrame):
+        if not isinstance(
+            self.timeframe,
+            TimeFrame,
+        ):
             raise TypeError(
                 "timeframe must be a TimeFrame."
+            )
+
+        if not isinstance(
+            self.quantity,
+            int,
+        ):
+            raise TypeError(
+                "quantity must be an integer."
             )
 
         if self.quantity <= 0:
@@ -107,22 +133,45 @@ class BacktestConfig:
                 "quantity must be greater than zero."
             )
 
-        if not isinstance(self.output_directory, Path):
+        if not isinstance(
+            self.output_directory,
+            Path,
+        ):
             raise TypeError(
                 "output_directory must be a pathlib.Path."
             )
 
-        if not isinstance(self.export_console, bool):
+        if (
+            self.date_range is not None
+            and not isinstance(
+                self.date_range,
+                DateRange,
+            )
+        ):
+            raise TypeError(
+                "date_range must be a DateRange or None."
+            )
+
+        if not isinstance(
+            self.export_console,
+            bool,
+        ):
             raise TypeError(
                 "export_console must be a bool."
             )
 
-        if not isinstance(self.export_csv, bool):
+        if not isinstance(
+            self.export_csv,
+            bool,
+        ):
             raise TypeError(
                 "export_csv must be a bool."
             )
 
-        if not isinstance(self.export_json, bool):
+        if not isinstance(
+            self.export_json,
+            bool,
+        ):
             raise TypeError(
                 "export_json must be a bool."
             )
