@@ -7,6 +7,7 @@ pipeline.
 Responsibilities
 ----------------
 - Create strategy instances through StrategyFactory.
+- Create isolated BacktestApplication instances.
 - Execute isolated backtests.
 - Convert completed backtest reports into OptimizationResult.
 
@@ -21,29 +22,39 @@ The OptimizationExecutor intentionally does NOT implement:
 
 from __future__ import annotations
 
-from app.backtest.reporting.builder import ReportBuilder
-from app.backtest.optimization.result import OptimizationResult
-from app.backtest.backtest_result import BacktestResult
+from app.backtest.application_factory import (
+    BacktestApplicationFactory,
+)
+from app.backtest.optimization.result import (
+    OptimizationResult,
+)
+from app.backtest.reporting.report import (
+    BacktestReport,
+)
+from app.core.backtest_application import (
+    BacktestApplication,
+)
 from app.strategies.ema_parameters import (
     EMACrossoverParameters,
 )
-from app.strategies.strategy_factory import StrategyFactory
+from app.strategies.strategy_factory import (
+    StrategyFactory,
+)
 
 
 class OptimizationExecutor:
     """
     Executes a single optimization parameter configuration.
 
-    The executor is stateless and deterministic. Each execution must produce
-    an independent OptimizationResult.
+    The executor is stateless and deterministic. Each execution
+    produces an independent OptimizationResult.
     """
 
     def __init__(
         self,
         *,
         strategy_factory: StrategyFactory,
-        backtest_runner,
-        report_builder: ReportBuilder,
+        application_factory: BacktestApplicationFactory,
     ) -> None:
 
         if not isinstance(
@@ -54,22 +65,16 @@ class OptimizationExecutor:
                 "strategy_factory must be a StrategyFactory."
             )
 
-        if not callable(backtest_runner):
-            raise TypeError(
-                "backtest_runner must be callable."
-            )
-
         if not isinstance(
-            report_builder,
-            ReportBuilder,
+            application_factory,
+            BacktestApplicationFactory,
         ):
             raise TypeError(
-                "report_builder must be a ReportBuilder."
+                "application_factory must be a BacktestApplicationFactory."
             )
 
         self._strategy_factory = strategy_factory
-        self._backtest_runner = backtest_runner
-        self._report_builder = report_builder
+        self._application_factory = application_factory
 
     def execute(
         self,
@@ -89,22 +94,18 @@ class OptimizationExecutor:
             Immutable optimization result.
         """
 
-        strategy = (
-            self._strategy_factory.create(
-                parameters
-            )
+        strategy = self._strategy_factory.create(
+            parameters
         )
 
-        result: BacktestResult = (
-            self._backtest_runner(
+        application: BacktestApplication = (
+            self._application_factory.create(
                 strategy
             )
         )
 
-        report = (
-            self._report_builder.build(
-                result
-            )
+        report: BacktestReport = (
+            application.run()
         )
 
         return OptimizationResult(

@@ -6,6 +6,14 @@ Builds the optimization dependency graph and executes an optimization run.
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from app.backtest.application_factory import (
+    BacktestApplicationFactory,
+)
+from app.backtest.backtest_config import (
+    BacktestConfig,
+)
 from app.backtest.optimization.config import (
     OptimizationConfig,
 )
@@ -24,11 +32,14 @@ from app.backtest.optimization.service import (
 from app.backtest.optimization.workflow import (
     OptimizationWorkflow,
 )
-from app.backtest.reporting.builder import (
-    ReportBuilder,
-)
 from app.core.optimization_application import (
     OptimizationApplication,
+)
+from app.market.instrument import (
+    Instrument,
+)
+from app.market.timeframe import (
+    TimeFrame,
 )
 from app.strategies.strategy_factory import (
     StrategyFactory,
@@ -40,14 +51,31 @@ def build_application() -> OptimizationApplication:
     Construct the optimization application.
     """
 
-    strategy_factory = StrategyFactory()
+    backtest_config = BacktestConfig(
+        csv_path=Path("data/history.csv"),
+        instrument=Instrument(
+            exchange="NSE",
+            symbol="NIFTY",
+            instrument_token=0,
+            lot_size=50,
+            tick_size=0.05,
+        ),
+        timeframe=TimeFrame.FIVE_MINUTES,
+        quantity=1,
+        output_directory=Path("reports"),
+    )
 
-    report_builder = ReportBuilder()
+    application_factory = (
+        BacktestApplicationFactory(
+            backtest_config,
+        )
+    )
+
+    strategy_factory = StrategyFactory()
 
     executor = OptimizationExecutor(
         strategy_factory=strategy_factory,
-        backtest_runner=lambda strategy: None,
-        report_builder=report_builder,
+        application_factory=application_factory,
     )
 
     workflow = OptimizationWorkflow(
@@ -75,9 +103,7 @@ def main() -> None:
     """
     CLI entry point.
 
-    The full optimization execution wiring will be completed in the
-    remaining FAL-220 implementation. For now, this validates dependency
-    construction.
+    The optimization dependency graph is fully wired.
     """
 
     application = build_application()
