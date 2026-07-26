@@ -11,11 +11,12 @@ Responsibilities
 ----------------
 - Store optimization results.
 - Preserve deterministic ordering.
+- Expose the selected optimization result.
 - Provide an immutable reporting contract.
 
-The OptimizationReport intentionally does NOT implement:
+The report intentionally does NOT implement:
 
-- Ranking
+- Ranking algorithms
 - Filtering
 - Parameter generation
 - Backtest execution
@@ -37,7 +38,52 @@ class OptimizationReport:
     Attributes
     ----------
     results
-        Optimization results in deterministic execution order.
+        Optimization results in deterministic ranking order.
     """
 
     results: tuple[OptimizationResult, ...]
+
+    def __post_init__(self) -> None:
+        """
+        Validate report contents.
+        """
+
+        for result in self.results:
+
+            if not isinstance(
+                result,
+                OptimizationResult,
+            ):
+                raise TypeError(
+                    "results must contain OptimizationResult objects."
+                )
+
+    @property
+    def best_result(
+        self,
+    ) -> OptimizationResult:
+        """
+        Return the highest-ranked optimization result.
+
+        Raises
+        ------
+        ValueError
+            If the report contains no results.
+        """
+
+        if not self.results:
+            raise ValueError(
+                "OptimizationReport contains no results."
+            )
+
+        return self.results[0]
+
+    @property
+    def best_parameters(
+        self,
+    ):
+        """
+        Return the selected strategy parameters.
+        """
+
+        return self.best_result.parameters

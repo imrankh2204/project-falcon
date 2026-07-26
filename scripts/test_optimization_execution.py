@@ -21,18 +21,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.backtest.backtest_config import BacktestConfig
 from app.backtest.application_factory import (
     BacktestApplicationFactory,
+)
+from app.backtest.backtest_config import (
+    BacktestConfig,
 )
 from app.backtest.optimization.executor import (
     OptimizationExecutor,
 )
 from app.backtest.optimization.result import (
     OptimizationResult,
-)
-from app.backtest.reporting.builder import (
-    ReportBuilder,
 )
 from app.market.instrument import Instrument
 from app.market.timeframe import TimeFrame
@@ -75,25 +74,17 @@ def build_executor() -> OptimizationExecutor:
 
     config = build_config()
 
-    factory = BacktestApplicationFactory(
-        config
+    application_factory = (
+        BacktestApplicationFactory(
+            config=config,
+        )
     )
 
     strategy_factory = StrategyFactory()
 
-    report_builder = ReportBuilder()
-
-    def run_backtest(strategy):
-        application = factory.create(
-            strategy
-        )
-
-        return application.run()
-
     return OptimizationExecutor(
         strategy_factory=strategy_factory,
-        backtest_runner=run_backtest,
-        report_builder=report_builder,
+        application_factory=application_factory,
     )
 
 
@@ -172,7 +163,8 @@ def main() -> None:
         "Optimization Execution Validation Passed"
     )
     print("=" * 60)
-    print("")
+    print()
+
     print(
         "Strategy Factory       : OK"
     )
@@ -188,7 +180,8 @@ def main() -> None:
     print(
         "Determinism            : OK"
     )
-    print("")
+    print()
+
     print("=" * 60)
 
 

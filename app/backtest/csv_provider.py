@@ -231,7 +231,7 @@ class CsvHistoricalProvider(HistoricalDataProvider):
 
         if self._date_range is None:
             return True
-
+        
         return (
             self._date_range.start_time
             <= candle.timestamp

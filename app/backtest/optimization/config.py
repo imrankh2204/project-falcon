@@ -8,6 +8,7 @@ Responsibilities
 ----------------
 - Hold optimization search space.
 - Hold ranking configuration.
+- Hold optional optimization date range.
 - Validate configuration values.
 
 The OptimizationConfig intentionally does NOT implement:
@@ -23,6 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.backtest.date_range import DateRange
 from app.backtest.optimization.ranking import (
     RankingMetric,
 )
@@ -40,6 +42,8 @@ class OptimizationConfig:
     ranking_metric: RankingMetric
 
     max_combinations: int | None = None
+
+    date_range: DateRange | None = None
 
     def __post_init__(self) -> None:
 
@@ -93,3 +97,15 @@ class OptimizationConfig:
                 raise ValueError(
                     "max_combinations must be greater than zero."
                 )
+
+        if (
+            self.date_range
+            is not None
+            and not isinstance(
+                self.date_range,
+                DateRange,
+            )
+        ):
+            raise TypeError(
+                "date_range must be a DateRange or None."
+            )

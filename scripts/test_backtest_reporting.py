@@ -26,7 +26,13 @@ import csv
 import json
 from datetime import datetime
 
+from app.backtest.advanced_performance_snapshot import (
+    AdvancedPerformanceSnapshot,
+)
 from app.backtest.backtest_result import BacktestResult
+from app.backtest.equity_curve_snapshot import (
+    EquityCurveSnapshot,
+)
 from app.backtest.performance_snapshot import PerformanceSnapshot
 from app.backtest.reporting.builder import ReportBuilder
 from app.backtest.reporting.console import ConsoleExporter
@@ -54,6 +60,22 @@ def build_result() -> BacktestResult:
         largest_loss=-180.00,
     )
 
+    advanced_performance = (
+        AdvancedPerformanceSnapshot(
+            profit_factor=2.91,
+            expectancy=82.03,
+            sharpe_ratio=1.74,
+            sortino_ratio=2.36,
+        )
+    )
+
+    equity_curve = EquityCurveSnapshot(
+        points=(),
+        peak_equity=0.0,
+        maximum_drawdown=0.0,
+        maximum_drawdown_percentage=0.0,
+    )
+
     return BacktestResult(
         instrument=Instrument(
             exchange="NSE",
@@ -63,13 +85,29 @@ def build_result() -> BacktestResult:
             tick_size=0.05,
         ),
         strategy_name="EMACrossoverStrategy",
-        start_time=datetime(2026, 1, 1, 9, 15),
-        end_time=datetime(2026, 1, 1, 15, 30),
+        start_time=datetime(
+            2026,
+            1,
+            1,
+            9,
+            15,
+        ),
+        end_time=datetime(
+            2026,
+            1,
+            1,
+            15,
+            30,
+        ),
         performance=performance,
+        advanced_performance=advanced_performance,
+        equity_curve=equity_curve,
     )
 
 
-def validate_report_builder(result: BacktestResult) -> None:
+def validate_report_builder(
+    result: BacktestResult,
+) -> None:
     """
     Validate ReportBuilder.
     """
@@ -83,7 +121,9 @@ def validate_report_builder(result: BacktestResult) -> None:
     assert report.performance == result.performance
 
 
-def validate_console_export(result: BacktestResult) -> None:
+def validate_console_export(
+    result: BacktestResult,
+) -> None:
     """
     Validate ConsoleExporter.
     """
@@ -102,7 +142,9 @@ def validate_console_export(result: BacktestResult) -> None:
     assert "820.25" in text
 
 
-def validate_csv_export(result: BacktestResult) -> None:
+def validate_csv_export(
+    result: BacktestResult,
+) -> None:
     """
     Validate CsvExporter.
     """
@@ -124,7 +166,9 @@ def validate_csv_export(result: BacktestResult) -> None:
     assert values[4] == "10"
 
 
-def validate_json_export(result: BacktestResult) -> None:
+def validate_json_export(
+    result: BacktestResult,
+) -> None:
     """
     Validate JsonExporter.
     """
@@ -135,19 +179,40 @@ def validate_json_export(result: BacktestResult) -> None:
         JsonExporter().export(report)
     )
 
-    assert payload["strategy_name"] == "EMACrossoverStrategy"
+    assert (
+        payload["strategy_name"]
+        == "EMACrossoverStrategy"
+    )
 
-    assert payload["instrument"]["symbol"] == "NIFTY"
+    assert (
+        payload["instrument"]["symbol"]
+        == "NIFTY"
+    )
 
-    assert payload["performance"]["trade_count"] == 10
+    assert (
+        payload["performance"]["trade_count"]
+        == 10
+    )
 
-    assert payload["performance"]["winning_trades"] == 6
+    assert (
+        payload["performance"]["winning_trades"]
+        == 6
+    )
 
-    assert payload["performance"]["net_profit"] == 820.25
+    assert (
+        payload["performance"]["net_profit"]
+        == 820.25
+    )
 
-    assert payload["start_time"] == "2026-01-01T09:15:00"
+    assert (
+        payload["start_time"]
+        == "2026-01-01T09:15:00"
+    )
 
-    assert payload["end_time"] == "2026-01-01T15:30:00"
+    assert (
+        payload["end_time"]
+        == "2026-01-01T15:30:00"
+    )
 
 
 def main() -> None:
@@ -163,7 +228,9 @@ def main() -> None:
     validate_json_export(result)
 
     print("=" * 60)
-    print("Backtest Reporting Validation Passed")
+    print(
+        "Backtest Reporting Validation Passed"
+    )
     print("=" * 60)
     print()
 
