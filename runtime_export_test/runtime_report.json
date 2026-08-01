@@ -1,0 +1,27 @@
+{
+    "statistics": {
+        "events_processed": 3,
+        "accepted_trades": 2,
+        "rejected_trades": 1,
+        "started_at": "2026-08-02T00:18:51.631158",
+        "finished_at": "2026-08-02T00:18:51.631175",
+        "elapsed": "0:00:05"
+    },
+    "events": [
+        {
+            "sequence": 1,
+            "timestamp": "2026-08-02T00:18:51.631189",
+            "accepted": true
+        },
+        {
+            "sequence": 2,
+            "timestamp": "2026-08-02T00:18:51.631195",
+            "accepted": false
+        },
+        {
+            "sequence": 3,
+            "timestamp": "2026-08-02T00:18:51.631199",
+            "accepted": true
+        }
+    ]
+}
