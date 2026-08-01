@@ -22,7 +22,12 @@ It is a composition and lifecycle layer only.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Any, Optional
+
+from app.live.execution_result import ExecutionResult
+from app.live.runtime_event import RuntimeEvent
+from app.live.runtime_statistics import RuntimeStatistics
 
 
 logger = logging.getLogger(__name__)
@@ -74,6 +79,19 @@ class LiveRuntime:
         self.event_source = event_source
 
         self.running = False
+        #
+        # Runtime statistics.
+        #
+        self._events_processed = 0
+        self._accepted_trades = 0
+        self._rejected_trades = 0
+
+        self._started_at: datetime | None = None
+        self._finished_at: datetime | None = None
+        #
+        # Runtime event history.
+        #
+        self._events: list[RuntimeEvent] = []
 
         logger.info(
             "LiveRuntime initialized"
@@ -107,6 +125,13 @@ class LiveRuntime:
 
             self.running = True
 
+            self._started_at = datetime.now()
+            self._finished_at = None
+
+            self._events_processed = 0
+            self._accepted_trades = 0
+            self._rejected_trades = 0
+            self._events.clear()
             logger.info(
                 "LiveRuntime started"
             )
@@ -141,6 +166,7 @@ class LiveRuntime:
 
             self.running = False
 
+            self._finished_at = datetime.now()
             logger.info(
                 "LiveRuntime stopped"
             )
@@ -158,10 +184,8 @@ class LiveRuntime:
 
     def process_event(self, event: Any) -> Optional[Any]:
         """
-        Forward market events to LiveEngine.
-
-        This method exists as the future callback
-        target for live market data providers.
+        Forward market events to LiveEngine while collecting
+        runtime execution statistics.
         """
 
         if not self.running:
@@ -171,7 +195,63 @@ class LiveRuntime:
 
             return None
 
-        return self.live_engine.process_event(event)
+        self._events_processed += 1
+
+        result = self.live_engine.process_event(event)
+
+        if isinstance(result, ExecutionResult):
+
+            if result.accepted:
+                self._accepted_trades += 1
+            else:
+                self._rejected_trades += 1
+
+            self._events.append(
+                RuntimeEvent(
+                    sequence=self._events_processed,
+                    timestamp=datetime.now(),
+                    accepted=result.accepted,
+                    description=(
+                        "Trade accepted"
+                        if result.accepted
+                        else "Trade rejected"
+                    ),
+                )
+            )
+
+        return result
+
+    def statistics(self) -> RuntimeStatistics:
+        """
+        Return an immutable snapshot of runtime statistics.
+        """
+
+        elapsed = None
+
+        if (
+            self._started_at is not None
+            and self._finished_at is not None
+        ):
+            elapsed = (
+                self._finished_at
+                - self._started_at
+            )
+
+        return RuntimeStatistics(
+            events_processed=self._events_processed,
+            accepted_trades=self._accepted_trades,
+            rejected_trades=self._rejected_trades,
+            started_at=self._started_at,
+            finished_at=self._finished_at,
+            elapsed=elapsed,
+        )
+
+    def events(self) -> tuple[RuntimeEvent, ...]:
+        """
+        Return an immutable snapshot of the runtime event history.
+        """
+
+        return tuple(self._events)
 
     def run(self) -> None:
         """
