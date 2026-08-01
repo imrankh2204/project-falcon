@@ -75,7 +75,7 @@ class BrokerGateway(ABC):
     @abstractmethod
     def place_order(
         self,
-        order_request: OrderRequest,
+        order: Order,
     ) -> Order:
         """
         Submit a live order.

@@ -25,6 +25,9 @@ from app.live.order_status import OrderStatus
 from app.live.order_type import OrderType
 from app.live.product_type import ProductType
 from app.live.transaction_type import TransactionType
+from app.live.live_trading_service import (
+    LiveTradingService,
+)
 
 __all__ = [
     "AuthenticationError",

@@ -1,14 +1,21 @@
 """
 Trade signal translation service for Project Falcon.
 
-This module defines the application-layer service responsible for
-translating a strategy-generated Signal into a broker-independent
+Translates a strategy-generated Signal into a broker-independent
 TradeRequest.
 
-The translator intentionally contains no trading logic, risk
-management, portfolio inspection, or execution behaviour. Its sole
-responsibility is constructing a valid TradeRequest from validated
-inputs.
+Responsibilities
+----------------
+- Translate strategy signals into TradeRequest objects.
+- Remain stateless and deterministic.
+- Preserve broker independence.
+
+The translator intentionally does NOT implement:
+
+- Strategy logic
+- Risk validation
+- Position sizing algorithms
+- Broker communication
 """
 
 from __future__ import annotations
@@ -20,65 +27,68 @@ from app.trading.trade_request import TradeRequest
 
 class TradeSignalTranslator:
     """
-    Application service responsible for translating strategy signals
-    into executable trade requests.
-
-    The translator is intentionally stateless and may be reused across
-    multiple backtest or live trading sessions.
+    Stateless application service that translates trading signals into
+    executable TradeRequest objects.
     """
 
-    def translate(
+    def __init__(
         self,
         *,
-        instrument: Instrument,
-        signal: Signal,
-        quantity: int,
-    ) -> TradeRequest:
+        default_quantity: int = 1,
+    ) -> None:
         """
-        Translate a strategy signal into a TradeRequest.
+        Initialize the translator.
 
         Parameters
         ----------
-        instrument
-            Instrument associated with the trade.
-
-        signal
-            Strategy-generated trading signal.
-
-        quantity
-            Number of units requested.
-
-        Returns
-        -------
-        TradeRequest
-            Broker-independent trade request.
-
-        Raises
-        ------
-        TypeError
-            If instrument or signal has an invalid type.
-
-        ValueError
-            If quantity is not greater than zero.
+        default_quantity
+            Quantity assigned to every translated trade request.
         """
 
-        if not isinstance(instrument, Instrument):
+        if not isinstance(
+            default_quantity,
+            int,
+        ):
+            raise TypeError(
+                "default_quantity must be an integer."
+            )
+
+        if default_quantity <= 0:
+            raise ValueError(
+                "default_quantity must be greater than zero."
+            )
+
+        self._default_quantity = (
+            default_quantity
+        )
+
+    def translate(
+        self,
+        instrument: Instrument,
+        signal: Signal,
+    ) -> TradeRequest:
+        """
+        Translate a strategy signal into a TradeRequest.
+        """
+
+        if not isinstance(
+            instrument,
+            Instrument,
+        ):
             raise TypeError(
                 "instrument must be an Instrument."
             )
 
-        if not isinstance(signal, Signal):
+        if not isinstance(
+            signal,
+            Signal,
+        ):
             raise TypeError(
                 "signal must be a Signal."
-            )
-
-        if quantity <= 0:
-            raise ValueError(
-                "quantity must be greater than zero."
             )
 
         return TradeRequest(
             instrument=instrument,
             signal=signal,
-            quantity=quantity,
+            quantity=self._default_quantity,
         )
