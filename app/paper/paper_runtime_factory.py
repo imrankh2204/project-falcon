@@ -1,7 +1,7 @@
 """
 Project Falcon
 
-FAL-530-R2
+FAL-610-R4
 
 Paper Runtime Factory
 
@@ -55,7 +55,7 @@ class PaperRuntimeFactory:
         strategy_engine: Any,
         signal_translator: Any,
         risk_manager: Any,
-        event_source: Any | None = None,
+        market_feed: Any | None = None,
     ) -> LiveRuntime:
         """
         Create and return a configured LiveRuntime
@@ -93,9 +93,7 @@ class PaperRuntimeFactory:
         #
         live_execution_engine = (
             LiveExecutionEngine(
-                live_trading_service=(
-                    live_trading_service
-                ),
+                live_trading_service=live_trading_service,
             )
         )
 
@@ -114,7 +112,7 @@ class PaperRuntimeFactory:
         #
         runtime = LiveRuntime(
             live_engine=live_engine,
-            event_source=event_source,
+            market_feed=market_feed,
         )
 
         return runtime

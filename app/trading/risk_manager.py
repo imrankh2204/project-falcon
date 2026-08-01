@@ -5,7 +5,7 @@ Risk manager for Project Falcon.
 from __future__ import annotations
 
 from app.trading.position import Position
-from app.trading.trade_request import TradeRequest
+from app.live.order_request import OrderRequest
 
 
 class RiskManager:
@@ -25,7 +25,7 @@ class RiskManager:
 
     def approve(
         self,
-        trade: TradeRequest,
+        order_request: OrderRequest,
         *,
         open_positions: list[Position],
         trades_today: int,
@@ -34,7 +34,7 @@ class RiskManager:
         Return True if the trade is permitted.
         """
 
-        if trade.quantity <= 0:
+        if order_request.quantity <= 0:
             return False
 
         if len(open_positions) >= self._max_open_positions:

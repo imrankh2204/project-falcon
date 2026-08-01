@@ -25,15 +25,11 @@ LiveTradingService
 PaperBrokerGateway
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 
-from app.live.order_request import OrderRequest
-from app.live.order_type import OrderType
-from app.live.product_type import ProductType
 from app.live.quote import Quote
-from app.live.transaction_type import (
-    TransactionType,
-)
 from app.market.instrument import Instrument
 from app.paper.paper_broker_gateway import (
     PaperBrokerGateway,
@@ -41,6 +37,9 @@ from app.paper.paper_broker_gateway import (
 from app.paper.paper_runtime_factory import (
     PaperRuntimeFactory,
 )
+from app.strategies.signal import Signal
+from app.trading.risk_manager import RiskManager
+from app.trading.trade_request import TradeRequest
 
 
 # ---------------------------------------------------------
@@ -49,7 +48,6 @@ from app.paper.paper_runtime_factory import (
 
 
 class MockStrategyEngine:
-
     def evaluate(
         self,
         event,
@@ -60,31 +58,19 @@ class MockStrategyEngine:
 
 
 class MockSignalTranslator:
-
     def translate(
         self,
+        instrument,
         signal,
     ):
-        return OrderRequest(
-            instrument=signal["instrument"],
-            transaction_type=TransactionType.BUY,
+        return TradeRequest(
+            instrument=instrument,
+            signal=Signal.BUY,
             quantity=50,
-            order_type=OrderType.MARKET,
-            product_type=ProductType.MIS,
         )
 
 
-class MockRiskManager:
-
-    def validate(
-        self,
-        order_request,
-    ):
-        return True
-
-
-class MockEventSource:
-
+class MockMarketFeed:
     def start(self):
         pass
 
@@ -97,15 +83,15 @@ class MockEventSource:
 # ---------------------------------------------------------
 
 
-def main():
+def main() -> None:
 
     strategy = MockStrategyEngine()
 
     translator = MockSignalTranslator()
 
-    risk = MockRiskManager()
+    risk = RiskManager()
 
-    event_source = MockEventSource()
+    market_feed = MockMarketFeed()
 
     factory = PaperRuntimeFactory()
 
@@ -113,7 +99,7 @@ def main():
         strategy_engine=strategy,
         signal_translator=translator,
         risk_manager=risk,
-        event_source=event_source,
+        market_feed=market_feed,
     )
 
     #

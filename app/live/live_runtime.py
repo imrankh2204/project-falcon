@@ -28,7 +28,7 @@ from typing import Any, Optional
 from app.live.execution_result import ExecutionResult
 from app.live.runtime_event import RuntimeEvent
 from app.live.runtime_statistics import RuntimeStatistics
-
+from app.live.market_feed import MarketFeed
 
 logger = logging.getLogger(__name__)
 
