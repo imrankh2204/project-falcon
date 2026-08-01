@@ -29,6 +29,8 @@ from typing import Any
 from app.backtest.replay_engine import ReplayEngine
 from app.live.market_feed import MarketFeed
 
+from app.market.events.candle_event import CandleEvent
+
 
 class ReplayMarketFeed(MarketFeed):
     """
@@ -76,4 +78,7 @@ class ReplayMarketFeed(MarketFeed):
                 "ReplayMarketFeed has not been started."
             )
 
-        yield from self._replay_engine.replay()
+        for event in self._replay_engine.replay():
+            yield CandleEvent(
+                candle=event.candle,
+            )

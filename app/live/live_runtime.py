@@ -64,7 +64,7 @@ class LiveRuntime:
     def __init__(
         self,
         live_engine: Any,
-        event_source: Optional[Any] = None,
+        market_feed: MarketFeed | None = None,
     ):
         """
         Initialize LiveRuntime.
@@ -76,7 +76,7 @@ class LiveRuntime:
         """
 
         self.live_engine = live_engine
-        self.event_source = event_source
+        self.market_feed = market_feed
 
         self.running = False
         #
@@ -120,8 +120,8 @@ class LiveRuntime:
         try:
             self.live_engine.start()
 
-            if self.event_source is not None:
-                self.event_source.start()
+            if self.market_feed is not None:
+                self.market_feed.start()
 
             self.running = True
 
@@ -159,8 +159,8 @@ class LiveRuntime:
             return
 
         try:
-            if self.event_source is not None:
-                self.event_source.stop()
+            if self.market_feed is not None:
+                self.market_feed.stop()
 
             self.live_engine.stop()
 
@@ -255,27 +255,27 @@ class LiveRuntime:
 
     def run(self) -> None:
         """
-        Execute the runtime using the configured event source.
+        Execute the runtime using the configured market feed.
 
-        The runtime remains deterministic because the event source
-        controls event ordering and pacing.
+        The runtime remains deterministic because the market
+        feed controls event ordering and pacing.
 
         Raises
         ------
         RuntimeError
-            If no event source has been configured.
+            If no market feed has been configured.
         """
 
-        if self.event_source is None:
+        if self.market_feed is None:
             raise RuntimeError(
-                "LiveRuntime requires an event source."
+                "LiveRuntime requires a market feed."
             )
 
         if not self.running:
             self.start()
 
         try:
-            for event in self.event_source.events():
+            for event in self.market_feed.events():
                 self.process_event(event)
 
         finally:
