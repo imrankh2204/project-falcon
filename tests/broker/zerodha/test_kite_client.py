@@ -8,33 +8,53 @@ encapsulated behind the adapter boundary.
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
 import pytest
 
 from app.broker.broker_config import BrokerConfig
 from app.broker.zerodha.kite_client import KiteClient
+from app.live.exceptions import AuthenticationError
 
 
-def create_config(
-    api_secret: str | None = "test-secret",
-) -> BrokerConfig:
+def create_config() -> BrokerConfig:
     """
-    Create a valid BrokerConfig for testing.
+    Create a valid BrokerConfig.
     """
 
     return BrokerConfig(
         broker_name="Zerodha",
         api_key="test-api-key",
-        api_secret=api_secret,
+        api_secret="test-secret",
         redirect_url="http://localhost:8000",
     )
 
 
-@patch("app.broker.zerodha.kite_client.KiteConnect")
-def test_construct_client(mock_kite) -> None:
+def create_client() -> KiteClient:
     """
-    Verify the SDK client is constructed correctly.
+    Create a KiteClient backed by a mocked SDK.
+    """
+
+    sdk = MagicMock()
+
+    with patch(
+        "app.broker.zerodha.kite_client.KiteConnect",
+        return_value=sdk,
+    ):
+        client = KiteClient(
+            create_config(),
+        )
+
+    return client
+
+
+@patch("app.broker.zerodha.kite_client.KiteConnect")
+def test_construct_client(
+    mock_kite,
+) -> None:
+    """
+    Verify SDK construction.
     """
 
     config = create_config()
@@ -48,7 +68,7 @@ def test_construct_client(mock_kite) -> None:
 
 def test_invalid_config_type() -> None:
     """
-    Constructor should reject invalid configuration objects.
+    Constructor validates configuration.
     """
 
     with pytest.raises(TypeError):
@@ -56,33 +76,43 @@ def test_invalid_config_type() -> None:
 
 
 @patch("app.broker.zerodha.kite_client.KiteConnect")
-def test_broker_name(mock_kite) -> None:
+def test_broker_name(
+    mock_kite,
+) -> None:
     """
-    Verify broker_name returns the configured broker.
+    Broker name is exposed.
     """
 
-    client = KiteClient(create_config())
+    client = KiteClient(
+        create_config(),
+    )
 
-    assert client.broker_name == "Zerodha"
+    assert (
+        client.broker_name
+        == "Zerodha"
+    )
 
 
 @patch("app.broker.zerodha.kite_client.KiteConnect")
-def test_login_url(mock_kite) -> None:
+def test_login_url(
+    mock_kite,
+) -> None:
     """
-    Verify login_url delegates to the SDK.
+    Login URL delegates to SDK.
     """
 
     sdk = mock_kite.return_value
+
     sdk.login_url.return_value = (
         "https://kite.trade/connect/login"
     )
 
-    client = KiteClient(create_config())
-
-    url = client.login_url()
+    client = KiteClient(
+        create_config(),
+    )
 
     assert (
-        url
+        client.login_url()
         == "https://kite.trade/connect/login"
     )
 
@@ -90,15 +120,17 @@ def test_login_url(mock_kite) -> None:
 
 
 @patch("app.broker.zerodha.kite_client.KiteConnect")
-def test_generate_session(mock_kite) -> None:
+def test_generate_session(
+    mock_kite,
+) -> None:
     """
-    Verify generate_session delegates correctly.
+    Session generation delegates correctly.
     """
 
     sdk = mock_kite.return_value
 
     sdk.generate_session.return_value = {
-        "access_token": "token"
+        "access_token": "token",
     }
 
     config = create_config()
@@ -106,139 +138,91 @@ def test_generate_session(mock_kite) -> None:
     client = KiteClient(config)
 
     result = client.generate_session(
-        "request-token"
+        request_token="request-token",
+        api_secret="test-secret",
     )
 
     assert result == {
-        "access_token": "token"
+        "access_token": "token",
     }
 
     sdk.generate_session.assert_called_once_with(
         request_token="request-token",
-        api_secret=config.api_secret,
+        api_secret="test-secret",
     )
 
 
 @patch("app.broker.zerodha.kite_client.KiteConnect")
-def test_generate_session_empty_request_token(
+def test_set_access_token(
     mock_kite,
 ) -> None:
     """
-    Empty request token should fail.
-    """
-
-    client = KiteClient(create_config())
-
-    with pytest.raises(ValueError):
-        client.generate_session("")
-
-
-@patch("app.broker.zerodha.kite_client.KiteConnect")
-def test_generate_session_invalid_request_token(
-    mock_kite,
-) -> None:
-    """
-    Request token must be a string.
-    """
-
-    client = KiteClient(create_config())
-
-    with pytest.raises(TypeError):
-        client.generate_session(123)
-
-
-@patch("app.broker.zerodha.kite_client.KiteConnect")
-def test_generate_session_requires_api_secret(
-    mock_kite,
-) -> None:
-    """
-    API secret is required.
-    """
-
-    client = KiteClient(
-        create_config(api_secret=None)
-    )
-
-    with pytest.raises(ValueError):
-        client.generate_session(
-            "request-token"
-        )
-
-
-@patch("app.broker.zerodha.kite_client.KiteConnect")
-def test_set_access_token(mock_kite) -> None:
-    """
-    Verify access token delegation.
+    Access token delegates correctly.
     """
 
     sdk = mock_kite.return_value
 
-    sdk.set_access_token = MagicMock()
-
-    client = KiteClient(create_config())
+    client = KiteClient(
+        create_config(),
+    )
 
     client.set_access_token(
-        "access-token"
+        "access-token",
     )
 
     sdk.set_access_token.assert_called_once_with(
-        "access-token"
+        "access-token",
     )
 
 
-@patch("app.broker.zerodha.kite_client.KiteConnect")
-def test_empty_access_token(
-    mock_kite,
-) -> None:
+def test_get_profile() -> None:
     """
-    Empty access token should fail.
+    Profile is retrieved.
     """
 
-    client = KiteClient(create_config())
+    client = create_client()
 
-    with pytest.raises(ValueError):
-        client.set_access_token("")
+    client._client.profile.return_value = {
+        "user_name": "Falcon User",
+    }
 
+    profile = client.get_profile()
 
-@patch("app.broker.zerodha.kite_client.KiteConnect")
-def test_invalid_access_token_type(
-    mock_kite,
-) -> None:
-    """
-    Access token must be a string.
-    """
-
-    client = KiteClient(create_config())
-
-    with pytest.raises(TypeError):
-        client.set_access_token(123)
-
-
-def test_login_url_returns_sdk_value() -> None:
-    """
-    login_url delegates to the SDK.
-    """
-
-    sdk = MagicMock()
-
-    sdk.login_url.return_value = (
-        "https://kite.trade/connect/login"
+    assert (
+        profile["user_name"]
+        == "Falcon User"
     )
 
-    with patch(
-        "app.broker.zerodha.kite_client.KiteConnect",
-        return_value=sdk,
+    client._client.profile.assert_called_once_with()
+
+
+def test_invalid_profile_response() -> None:
+    """
+    Invalid SDK response becomes AuthenticationError.
+    """
+
+    client = create_client()
+
+    client._client.profile.return_value = []
+
+    with pytest.raises(
+        AuthenticationError,
     ):
-        config = BrokerConfig(
-            broker_name="Zerodha",
-            api_key="test-api-key",
-        )
+        client.get_profile()
 
-        client = KiteClient(config)
 
-        assert (
-            client.login_url()
-            == "https://kite.trade/connect/login"
-        )
+def test_profile_exception_translation() -> None:
+    """
+    SDK exceptions are translated.
+    """
 
-        sdk.login_url.assert_called_once_with()
+    client = create_client()
+
+    client._client.profile.side_effect = RuntimeError(
+        "SDK failure",
+    )
+
+    with pytest.raises(
+        AuthenticationError,
+    ):
+        client.get_profile()

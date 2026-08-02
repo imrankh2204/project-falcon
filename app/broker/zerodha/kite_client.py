@@ -2,19 +2,6 @@
 Kite Connect client wrapper for Project Falcon.
 
 Encapsulates the official Kite Connect SDK behind a thin adapter.
-
-Responsibilities
-----------------
-- Construct the Kite SDK client.
-- Own the SDK instance.
-- Expose only Falcon-approved operations.
-- Prevent SDK leakage into the Falcon domain.
-
-The wrapper intentionally does NOT implement:
-
-- Order placement
-- Market data
-- WebSocket handling
 """
 
 from __future__ import annotations
@@ -22,6 +9,7 @@ from __future__ import annotations
 from kiteconnect import KiteConnect
 
 from app.broker.broker_config import BrokerConfig
+from app.live.exceptions import AuthenticationError
 
 
 class KiteClient:
@@ -33,9 +21,6 @@ class KiteClient:
         self,
         config: BrokerConfig,
     ) -> None:
-        """
-        Construct a Kite SDK client.
-        """
 
         if not isinstance(
             config,
@@ -55,31 +40,18 @@ class KiteClient:
     def broker_name(
         self,
     ) -> str:
-        """
-        Return the configured broker name.
-        """
-
         return self._config.broker_name
 
     def login_url(
         self,
     ) -> str:
-        """
-        Return the Kite login URL.
-
-        This method exposes the SDK login URL while
-        keeping the SDK contained within the broker layer.
-        """
-
         return self._client.login_url()
 
     def generate_session(
         self,
         request_token: str,
+        api_secret: str,
     ) -> dict:
-        """
-        Exchange a request token for a broker session.
-        """
 
         if not isinstance(
             request_token,
@@ -94,23 +66,28 @@ class KiteClient:
                 "request_token cannot be empty."
             )
 
-        if self._config.api_secret is None:
+        if not isinstance(
+            api_secret,
+            str,
+        ):
+            raise TypeError(
+                "api_secret must be a string."
+            )
+
+        if not api_secret.strip():
             raise ValueError(
-                "Broker configuration does not contain an API secret."
+                "api_secret cannot be empty."
             )
 
         return self._client.generate_session(
             request_token=request_token,
-            api_secret=self._config.api_secret,
+            api_secret=api_secret,
         )
 
     def set_access_token(
         self,
         access_token: str,
     ) -> None:
-        """
-        Configure the SDK with an access token.
-        """
 
         if not isinstance(
             access_token,
@@ -128,3 +105,26 @@ class KiteClient:
         self._client.set_access_token(
             access_token,
         )
+
+    def get_profile(
+        self,
+    ) -> dict:
+
+        try:
+            profile = self._client.profile()
+
+        except Exception as exc:
+
+            raise AuthenticationError(
+                "Unable to retrieve broker profile."
+            ) from exc
+
+        if not isinstance(
+            profile,
+            dict,
+        ):
+            raise AuthenticationError(
+                "Broker returned an invalid profile."
+            )
+
+        return profile
