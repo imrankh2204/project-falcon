@@ -85,9 +85,14 @@ class PaperBrokerGateway(BrokerGateway):
                 "Broker session has not been established."
             )
 
-        if self._session.is_expired:
+        if not self._session.is_active:
+            if self._session.status is SessionStatus.EXPIRED:
+                raise AuthenticationError(
+                    "Broker session has expired."
+                )
+
             raise AuthenticationError(
-                "Broker session has expired."
+                "Broker session is not authenticated."
             )
 
         return self._session

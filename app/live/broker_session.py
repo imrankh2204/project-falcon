@@ -132,3 +132,17 @@ class BrokerSession:
         return datetime.now(
             tz=self.expires_at.tzinfo
         ) >= self.expires_at
+
+    @property
+    def is_active(self) -> bool:
+        """
+        Return True if the broker session can be used.
+        """
+
+        if self.status is not SessionStatus.AUTHENTICATED:
+            return False
+
+        if self.is_expired:
+            return False
+
+        return True
