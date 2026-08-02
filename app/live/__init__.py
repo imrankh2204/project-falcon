@@ -10,6 +10,7 @@ networking code, or external SDK dependencies.
 
 from app.live.broker_gateway import BrokerGateway
 from app.live.broker_session import BrokerSession
+from app.live.session_status import SessionStatus
 from app.live.exceptions import (
     AuthenticationError,
     BrokerError,
@@ -43,6 +44,7 @@ __all__ = [
     "OrderType",
     "ProductType",
     "BrokerSession",
+    "SessionStatus",
     "SessionExpiredError",
     "TransactionType",
 ]

@@ -29,6 +29,7 @@ from typing import Dict
 from app.live.broker_gateway import BrokerGateway
 from app.live.broker_position import BrokerPosition
 from app.live.broker_session import BrokerSession
+from app.live.session_status import SessionStatus
 from app.live.exceptions import (
     AuthenticationError,
     OrderNotFoundError,
@@ -123,6 +124,7 @@ class PaperBrokerGateway(BrokerGateway):
             access_token="paper-session",
             authenticated_at=now,
             expires_at=None,
+            status=SessionStatus.AUTHENTICATED,
         )
 
         return self._session

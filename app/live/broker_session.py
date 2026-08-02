@@ -22,6 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from app.live.session_status import SessionStatus
 
 @dataclass(frozen=True, slots=True)
 class BrokerSession:
@@ -38,6 +39,8 @@ class BrokerSession:
     authenticated_at: datetime
 
     expires_at: datetime | None = None
+
+    status: SessionStatus = SessionStatus.AUTHENTICATED
 
     def __post_init__(self) -> None:
         """
@@ -100,6 +103,13 @@ class BrokerSession:
         ):
             raise TypeError(
                 "expires_at must be a datetime or None."
+            )
+        if not isinstance(
+            self.status,
+            SessionStatus,
+        ):
+            raise TypeError(
+                "status must be a SessionStatus."
             )
 
     @property
