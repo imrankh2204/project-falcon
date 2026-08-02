@@ -19,7 +19,7 @@ The model intentionally does NOT implement:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 from app.live.session_status import SessionStatus
@@ -146,3 +146,24 @@ class BrokerSession:
             return False
 
         return True
+
+    def with_status(
+        self,
+        status: SessionStatus,
+    ) -> BrokerSession:
+        """
+        Return a new BrokerSession with the supplied lifecycle status.
+        """
+
+        if not isinstance(
+            status,
+            SessionStatus,
+        ):
+            raise TypeError(
+                "status must be a SessionStatus."
+            )
+
+        return replace(
+            self,
+            status=status,
+        )
