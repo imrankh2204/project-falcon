@@ -65,7 +65,10 @@ class KiteClient:
         self,
     ) -> str:
         """
-        Return the Zerodha login URL.
+        Return the Kite login URL.
+
+        This method exposes the SDK login URL while
+        keeping the SDK contained within the broker layer.
         """
 
         return self._client.login_url()

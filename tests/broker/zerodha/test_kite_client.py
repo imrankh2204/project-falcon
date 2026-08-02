@@ -212,3 +212,33 @@ def test_invalid_access_token_type(
 
     with pytest.raises(TypeError):
         client.set_access_token(123)
+
+
+def test_login_url_returns_sdk_value() -> None:
+    """
+    login_url delegates to the SDK.
+    """
+
+    sdk = MagicMock()
+
+    sdk.login_url.return_value = (
+        "https://kite.trade/connect/login"
+    )
+
+    with patch(
+        "app.broker.zerodha.kite_client.KiteConnect",
+        return_value=sdk,
+    ):
+        config = BrokerConfig(
+            broker_name="Zerodha",
+            api_key="test-api-key",
+        )
+
+        client = KiteClient(config)
+
+        assert (
+            client.login_url()
+            == "https://kite.trade/connect/login"
+        )
+
+        sdk.login_url.assert_called_once_with()
