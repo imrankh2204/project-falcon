@@ -7,12 +7,11 @@ Responsibilities
 ----------------
 - Construct the Kite SDK client.
 - Own the SDK instance.
+- Expose only Falcon-approved operations.
 - Prevent SDK leakage into the Falcon domain.
 
 The wrapper intentionally does NOT implement:
 
-- Authentication
-- Session creation
 - Order placement
 - Market data
 - WebSocket handling
@@ -62,15 +61,67 @@ class KiteClient:
 
         return self._config.broker_name
 
-    @property
-    def client(
+    def login_url(
         self,
-    ) -> KiteConnect:
+    ) -> str:
         """
-        Return the encapsulated SDK client.
-
-        This property is intended for broker-layer
-        implementations only.
+        Return the Zerodha login URL.
         """
 
-        return self._client
+        return self._client.login_url()
+
+    def generate_session(
+        self,
+        request_token: str,
+    ) -> dict:
+        """
+        Exchange a request token for a broker session.
+        """
+
+        if not isinstance(
+            request_token,
+            str,
+        ):
+            raise TypeError(
+                "request_token must be a string."
+            )
+
+        if not request_token.strip():
+            raise ValueError(
+                "request_token cannot be empty."
+            )
+
+        if self._config.api_secret is None:
+            raise ValueError(
+                "Broker configuration does not contain an API secret."
+            )
+
+        return self._client.generate_session(
+            request_token=request_token,
+            api_secret=self._config.api_secret,
+        )
+
+    def set_access_token(
+        self,
+        access_token: str,
+    ) -> None:
+        """
+        Configure the SDK with an access token.
+        """
+
+        if not isinstance(
+            access_token,
+            str,
+        ):
+            raise TypeError(
+                "access_token must be a string."
+            )
+
+        if not access_token.strip():
+            raise ValueError(
+                "access_token cannot be empty."
+            )
+
+        self._client.set_access_token(
+            access_token,
+        )
