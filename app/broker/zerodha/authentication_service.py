@@ -1,68 +1,56 @@
 """
-Kite authentication service for Project Falcon.
+Authentication service for Zerodha Kite Connect.
 
-Exchanges a Kite request token for an authenticated Falcon
-BrokerSession while keeping all Kite SDK response handling
-inside the broker layer.
+Responsible for exchanging a request token for an authenticated
+Falcon BrokerSession.
 
-Responsibilities
-----------------
-- Perform session exchange.
-- Translate SDK response into BrokerSession.
-- Prevent SDK response leakage into the domain.
-
-The service intentionally does NOT implement:
-
-- Browser login
-- Redirect handling
-- Token persistence
-- Session refresh
-- Re-authentication
+The service intentionally hides all Kite SDK response details from
+the rest of the application.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
 
-from app.broker.broker_config import BrokerConfig
-from app.broker.zerodha.kite_client import KiteClient
 from app.live.broker_session import BrokerSession
-from app.live.session_status import SessionStatus
+from app.live.exceptions import AuthenticationError
+
+from .kite_client import KiteClient
 
 
 class AuthenticationService:
     """
-    Broker-layer authentication service.
+    Performs authentication using the Kite client.
     """
 
     def __init__(
         self,
-        config: BrokerConfig,
         client: KiteClient,
     ) -> None:
 
-        if not isinstance(config, BrokerConfig):
-            raise TypeError(
-                "config must be a BrokerConfig."
-            )
-
-        if not isinstance(client, KiteClient):
+        if not isinstance(
+            client,
+            KiteClient,
+        ):
             raise TypeError(
                 "client must be a KiteClient."
             )
 
-        self._config = config
         self._client = client
 
     def authenticate(
         self,
         request_token: str,
+        api_secret: str,
     ) -> BrokerSession:
         """
-        Exchange a request token for a BrokerSession.
+        Exchange a request token for an authenticated BrokerSession.
         """
 
-        if not isinstance(request_token, str):
+        if not isinstance(
+            request_token,
+            str,
+        ):
             raise TypeError(
                 "request_token must be a string."
             )
@@ -72,22 +60,79 @@ class AuthenticationService:
                 "request_token cannot be empty."
             )
 
-        session_data = self._client.generate_session(
-            request_token
+        if not isinstance(
+            api_secret,
+            str,
+        ):
+            raise TypeError(
+                "api_secret must be a string."
+            )
+
+        if not api_secret.strip():
+            raise ValueError(
+                "api_secret cannot be empty."
+            )
+
+        try:
+
+            session_data = (
+                self._client.generate_session(
+                    request_token=request_token,
+                    api_secret=api_secret,
+                )
+            )
+
+        except Exception as exc:
+
+            raise AuthenticationError(
+                "Authentication with broker failed."
+            ) from exc
+
+        if not isinstance(
+            session_data,
+            dict,
+        ):
+            raise AuthenticationError(
+                "Broker returned an invalid session response."
+            )
+
+        access_token = session_data.get(
+            "access_token"
         )
 
-        access_token = session_data["access_token"]
-        user_id = session_data["user_id"]
+        user_id = session_data.get(
+            "user_id"
+        )
+
+        if (
+            not isinstance(
+                access_token,
+                str,
+            )
+            or not access_token.strip()
+        ):
+            raise AuthenticationError(
+                "Broker session is missing a valid access token."
+            )
+
+        if (
+            not isinstance(
+                user_id,
+                str,
+            )
+            or not user_id.strip()
+        ):
+            raise AuthenticationError(
+                "Broker session is missing a valid user id."
+            )
 
         self._client.set_access_token(
             access_token
         )
 
         return BrokerSession(
-            broker_name=self._config.broker_name,
+            broker_name=self._client.broker_name,
             user_id=user_id,
             access_token=access_token,
             authenticated_at=datetime.now(),
-            expires_at=None,
-            status=SessionStatus.AUTHENTICATED,
         )

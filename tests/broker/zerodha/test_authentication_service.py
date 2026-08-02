@@ -11,26 +11,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.broker.broker_config import BrokerConfig
 from app.broker.zerodha.authentication_service import (
     AuthenticationService,
 )
 from app.broker.zerodha.kite_client import KiteClient
 from app.live.broker_session import BrokerSession
+from app.live.exceptions import AuthenticationError
 from app.live.session_status import SessionStatus
-
-
-def create_config() -> BrokerConfig:
-    """
-    Create a valid BrokerConfig.
-    """
-
-    return BrokerConfig(
-        broker_name="Zerodha",
-        api_key="test-api-key",
-        api_secret="test-secret",
-        redirect_url="http://localhost:8000",
-    )
 
 
 def create_client() -> KiteClient:
@@ -38,7 +25,11 @@ def create_client() -> KiteClient:
     Create a mocked KiteClient.
     """
 
-    client = MagicMock(spec=KiteClient)
+    client = MagicMock(
+        spec=KiteClient,
+    )
+
+    client.broker_name = "Zerodha"
 
     client.generate_session.return_value = {
         "access_token": "access-token",
@@ -49,17 +40,15 @@ def create_client() -> KiteClient:
 
 
 def test_authenticate_returns_broker_session() -> None:
-    """
-    Successful authentication returns a BrokerSession.
-    """
+    client = create_client()
 
     service = AuthenticationService(
-        create_config(),
-        create_client(),
+        client,
     )
 
     session = service.authenticate(
-        "request-token"
+        "request-token",
+        "api-secret",
     )
 
     assert isinstance(
@@ -89,40 +78,35 @@ def test_authenticate_returns_broker_session() -> None:
 
 
 def test_generate_session_called() -> None:
-    """
-    Verify request token exchange.
-    """
 
     client = create_client()
 
     service = AuthenticationService(
-        create_config(),
         client,
     )
 
     service.authenticate(
-        "request-token"
+        "request-token",
+        "api-secret",
     )
 
     client.generate_session.assert_called_once_with(
-        "request-token"
+        request_token="request-token",
+        api_secret="api-secret",
     )
 
 
-def test_access_token_is_registered() -> None:
-    """
-    Verify SDK access token registration.
-    """
+def test_access_token_registered() -> None:
 
     client = create_client()
 
     service = AuthenticationService(
-        create_config(),
         client,
     )
 
     service.authenticate(
-        "request-token"
+        "request-token",
+        "api-secret",
     )
 
     client.set_access_token.assert_called_once_with(
@@ -131,52 +115,134 @@ def test_access_token_is_registered() -> None:
 
 
 def test_invalid_request_token_type() -> None:
-    """
-    Request token must be a string.
-    """
 
     service = AuthenticationService(
-        create_config(),
         create_client(),
     )
 
     with pytest.raises(TypeError):
-        service.authenticate(123)
+        service.authenticate(
+            123,
+            "api-secret",
+        )
 
 
 def test_empty_request_token() -> None:
-    """
-    Empty request token is rejected.
-    """
 
     service = AuthenticationService(
-        create_config(),
         create_client(),
     )
 
     with pytest.raises(ValueError):
-        service.authenticate("")
+        service.authenticate(
+            "",
+            "api-secret",
+        )
 
 
-def test_invalid_config_type() -> None:
-    """
-    Constructor validates BrokerConfig.
-    """
+def test_invalid_api_secret_type() -> None:
+
+    service = AuthenticationService(
+        create_client(),
+    )
 
     with pytest.raises(TypeError):
-        AuthenticationService(
+        service.authenticate(
+            "request-token",
             123,
-            create_client(),
+        )
+
+
+def test_empty_api_secret() -> None:
+
+    service = AuthenticationService(
+        create_client(),
+    )
+
+    with pytest.raises(ValueError):
+        service.authenticate(
+            "request-token",
+            "",
         )
 
 
 def test_invalid_client_type() -> None:
-    """
-    Constructor validates KiteClient.
-    """
 
     with pytest.raises(TypeError):
         AuthenticationService(
-            create_config(),
             123,
+        )
+
+
+def test_invalid_session_type() -> None:
+
+    client = create_client()
+
+    client.generate_session.return_value = []
+
+    service = AuthenticationService(
+        client,
+    )
+
+    with pytest.raises(AuthenticationError):
+        service.authenticate(
+            "request-token",
+            "api-secret",
+        )
+
+
+def test_missing_access_token() -> None:
+
+    client = create_client()
+
+    client.generate_session.return_value = {
+        "user_id": "AB1234",
+    }
+
+    service = AuthenticationService(
+        client,
+    )
+
+    with pytest.raises(AuthenticationError):
+        service.authenticate(
+            "request-token",
+            "api-secret",
+        )
+
+
+def test_missing_user_id() -> None:
+
+    client = create_client()
+
+    client.generate_session.return_value = {
+        "access_token": "access-token",
+    }
+
+    service = AuthenticationService(
+        client,
+    )
+
+    with pytest.raises(AuthenticationError):
+        service.authenticate(
+            "request-token",
+            "api-secret",
+        )
+
+
+def test_sdk_exception_translated() -> None:
+
+    client = create_client()
+
+    client.generate_session.side_effect = RuntimeError(
+        "SDK failure"
+    )
+
+    service = AuthenticationService(
+        client,
+    )
+
+    with pytest.raises(AuthenticationError):
+        service.authenticate(
+            "request-token",
+            "api-secret",
         )
