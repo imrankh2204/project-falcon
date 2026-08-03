@@ -37,6 +37,9 @@ from app.portfolio.synchronization_service import (
 from app.trading.risk_manager import (
     RiskManager,
 )
+from app.broker.broker_account_facade import (
+    BrokerAccountFacade,
+)
 
 
 class LiveTradingService:
@@ -48,6 +51,7 @@ class LiveTradingService:
         self,
         *,
         broker_gateway: BrokerGateway,
+        account_facade: BrokerAccountFacade,
         risk_manager: RiskManager,
         synchronization_service: PortfolioSynchronizationService,
     ) -> None:
@@ -61,6 +65,14 @@ class LiveTradingService:
         ):
             raise TypeError(
                 "broker_gateway must be a BrokerGateway."
+            )
+
+        if not isinstance(
+            account_facade,
+            BrokerAccountFacade,
+        ):
+            raise TypeError(
+                "account_facade must be a BrokerAccountFacade."
             )
 
         if not isinstance(
@@ -81,6 +93,8 @@ class LiveTradingService:
             )
 
         self._broker_gateway = broker_gateway
+
+        self._account_facade = account_facade
 
         self._risk_manager = risk_manager
 
