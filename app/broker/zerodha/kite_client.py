@@ -9,7 +9,7 @@ from __future__ import annotations
 from kiteconnect import KiteConnect
 
 from app.broker.broker_config import BrokerConfig
-from app.live.exceptions import AuthenticationError
+from app.broker.exceptions import BrokerAuthenticationError
 
 
 class KiteClient:
@@ -115,7 +115,7 @@ class KiteClient:
 
         except Exception as exc:
 
-            raise AuthenticationError(
+            raise BrokerAuthenticationError(
                 "Unable to retrieve broker profile."
             ) from exc
 
@@ -123,8 +123,31 @@ class KiteClient:
             profile,
             dict,
         ):
-            raise AuthenticationError(
+            raise BrokerAuthenticationError(
                 "Broker returned an invalid profile."
             )
 
         return profile
+
+    def get_margins(self) -> dict:
+        """
+        Retrieve the current broker margin payload.
+        """
+
+        try:
+            margins = self._client.margins()
+
+        except Exception as exc:
+            raise BrokerAuthenticationError(
+                "Unable to retrieve broker margins."
+            ) from exc
+
+        if not isinstance(
+            margins,
+            dict,
+        ):
+            raise BrokerAuthenticationError(
+                "Broker returned an invalid margin payload."
+            )
+
+        return margins

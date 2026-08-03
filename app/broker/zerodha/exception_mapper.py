@@ -15,7 +15,7 @@ Concrete mappings will be added during the live API integration phase.
 
 from __future__ import annotations
 
-from app.live.exceptions import LiveTradingException
+from app.live.exceptions import BrokerError
 
 
 class ExceptionMapper:
@@ -26,7 +26,7 @@ class ExceptionMapper:
     @staticmethod
     def translate(
         exception: Exception,
-    ) -> LiveTradingException:
+    ) -> BrokerError:
         """
         Translate a broker exception.
 
@@ -37,10 +37,10 @@ class ExceptionMapper:
 
         Returns
         -------
-        LiveTradingException
+        BrokerError
             Falcon broker-independent exception.
         """
 
-        return LiveTradingException(
+        return BrokerError(
             str(exception)
         )

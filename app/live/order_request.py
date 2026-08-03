@@ -44,6 +44,10 @@ class OrderRequest:
 
     product_type: ProductType
 
+    price: float | None = None
+
+    trigger_price: float | None = None
+
     def __post_init__(self) -> None:
         """
         Validate order request fields.
@@ -93,3 +97,16 @@ class OrderRequest:
             raise TypeError(
                 "product_type must be a ProductType."
             )
+
+        if self.price is not None and not isinstance(
+            self.price,
+            (int, float),
+        ):
+            raise TypeError("price must be a number or None.")
+
+        if self.trigger_price is not None and not isinstance(
+            self.trigger_price,
+            (int, float),
+        ):
+            raise TypeError("trigger_price must be a number or None.")
+

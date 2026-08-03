@@ -15,7 +15,7 @@ import pytest
 
 from app.broker.broker_config import BrokerConfig
 from app.broker.zerodha.kite_client import KiteClient
-from app.live.exceptions import AuthenticationError
+from app.broker.exceptions import BrokerAuthenticationError
 
 
 def create_config() -> BrokerConfig:
@@ -198,7 +198,7 @@ def test_get_profile() -> None:
 
 def test_invalid_profile_response() -> None:
     """
-    Invalid SDK response becomes AuthenticationError.
+    Invalid SDK response becomes BrokerAuthenticationError.
     """
 
     client = create_client()
@@ -206,7 +206,7 @@ def test_invalid_profile_response() -> None:
     client._client.profile.return_value = []
 
     with pytest.raises(
-        AuthenticationError,
+        BrokerAuthenticationError,
     ):
         client.get_profile()
 
@@ -223,6 +223,6 @@ def test_profile_exception_translation() -> None:
     )
 
     with pytest.raises(
-        AuthenticationError,
+        BrokerAuthenticationError,
     ):
         client.get_profile()
