@@ -131,6 +131,24 @@ class LiveTradingService:
             )
 
         #
+        # Retrieve the latest broker account snapshot.
+        #
+        snapshot = self._account_facade.get_snapshot()
+
+        #
+        # Defensive account validation.
+        #
+        if snapshot.profile is None:
+            raise RuntimeError(
+                "Broker account profile is unavailable."
+            )
+
+        if snapshot.margin is None:
+            raise RuntimeError(
+                "Broker account margin is unavailable."
+            )
+        
+        #
         # Validate the order.
         #
         approved = self._risk_manager.approve(
