@@ -40,6 +40,12 @@ from app.broker.zerodha.session_manager import (
 from app.broker.zerodha.order_response_mapper import (
     OrderResponseMapper,
 )
+from app.broker.broker_session_recovery_service import (
+    BrokerSessionRecoveryService,
+)
+from app.broker.idempotent_order_executor import (
+    IdempotentOrderExecutor,
+)
 from app.live.broker_session import (
     BrokerSession,
 )
@@ -52,14 +58,17 @@ from app.live.broker_position import (
 from app.broker.zerodha.order_mapper import (
     OrderMapper,
 )
-from app.live.order_request import (
-    OrderRequest,
+from app.live.exceptions import (
+    SessionExpiredError,
 )
 from app.live.order import (
     Order,
 )
 from app.live.order_id import (
     OrderId,
+)
+from app.live.order_request import (
+    OrderRequest,
 )
 from app.live.order_status import (
     OrderStatus,
@@ -103,6 +112,16 @@ class ZerodhaBrokerGateway(BrokerGateway):
 
         self._kite: KiteConnect = self._session_manager.kite
 
+        self._recovery_service = (
+            BrokerSessionRecoveryService(
+                recovery_callback=self._recover_session,
+            )
+        )
+
+        self._order_executor = (
+            IdempotentOrderExecutor()
+        )
+
     #
     # Internal helpers
     #
@@ -116,12 +135,26 @@ class ZerodhaBrokerGateway(BrokerGateway):
         """
 
         try:
-            return operation()
+            return self._recovery_service.execute(
+            operation,
+        )
 
         except Exception as exc:
             raise ExceptionMapper.translate(
-                exc
+                exc,
             ) from exc
+
+    def _recover_session(self) -> None:
+        """
+        Recover the current broker session.
+
+        The recovery logic is intentionally delegated to the
+        SessionManager so that the gateway remains broker-neutral.
+        """
+
+        self._session_manager.authenticate()
+
+        self._kite = self._session_manager.kite
 
     def _instrument_key(
         self,
@@ -375,11 +408,34 @@ class ZerodhaBrokerGateway(BrokerGateway):
             request,
         )
 
-        broker_order_id = self._execute(
-            lambda: self._kite.place_order(
-                **payload,
-            )
+        key = (
+            f"{request.instrument.exchange}:"
+            f"{request.instrument.symbol}:"
+            f"{request.transaction_type.name}:"
+            f"{request.quantity}"
         )
+
+        try:
+            broker_order_id = self._order_executor.execute(
+                key=key,
+                operation=lambda: self._execute(
+                    lambda: self._kite.place_order(
+                        **payload,
+                    )
+                ),
+            )
+
+        except SessionExpiredError:
+            self._recovery_service.recover()
+
+            broker_order_id = self._order_executor.execute(
+                key=key,
+                operation=lambda: self._execute(
+                    lambda: self._kite.place_order(
+                        **payload,
+                    )
+                ),
+            )
 
         return self.get_order(
             OrderId(
